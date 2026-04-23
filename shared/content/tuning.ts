@@ -63,15 +63,15 @@ export const MINIBOSS_SIZE = 72;
 export const MINIBOSS_STOP_DIST = 500;
 export const MINIBOSS_FIRE_COOLDOWN_SEC = 2.2;
 export const MINIBOSS_SPAWN_COOLDOWN_SEC = 4.5;
-export const MINIBOSS_FIRST_SPAWN_SEC = 90;
-export const MINIBOSS_INTERVAL_SEC = 75;
+export const MINIBOSS_FIRST_SPAWN_SEC = 300;
+export const MINIBOSS_INTERVAL_SEC = 300;
 
 export const BOSS_HP = 1400;
 export const BOSS_SPEED = 40;
 export const BOSS_SIZE = 110;
 export const BOSS_STOP_DIST = 450;
 export const BOSS_FIRE_COOLDOWN_SEC = 1.2;
-export const BOSS_SPAWN_SEC = 300;
+export const BOSS_SPAWN_SEC = 1200;
 
 export const DIFFICULTY_SPAWN_DIV_FLOOR = 0.35;
 export const DIFFICULTY_SPAWN_SCALE_PER_MIN = 0.22;

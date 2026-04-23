@@ -5,6 +5,7 @@ import {
   GUN_BARREL_LEN,
   GUN_BASE_OFFSET_Y,
   GUN_FIRE_COOLDOWN_SEC,
+  GUN_ROTATE_SPEED_RAD_PER_SEC,
   PLAYER_BULLET_SPEED,
   PLAYER_BULLET_DAMAGE,
   PLAYER_BULLET_SIZE,
@@ -17,15 +18,20 @@ export function clampAimAngle(
   aimY: number,
   side: GunSide,
   prev: number,
+  dt: number,
 ): number {
   if (Math.abs(aimX) < 0.01 && Math.abs(aimY) < 0.01) return prev;
-  let angle = Math.atan2(aimY, aimX);
+  let target = Math.atan2(aimY, aimX);
   if (side === "top") {
-    if (angle < 0) angle = angle < -Math.PI / 2 ? Math.PI : 0;
+    if (target < 0) target = target < -Math.PI / 2 ? Math.PI : 0;
   } else {
-    if (angle > 0) angle = angle > Math.PI / 2 ? -Math.PI : 0;
+    if (target > 0) target = target > Math.PI / 2 ? -Math.PI : 0;
   }
-  return angle;
+  const maxStep = GUN_ROTATE_SPEED_RAD_PER_SEC * dt;
+  const diff = target - prev;
+  if (diff > maxStep) return prev + maxStep;
+  if (diff < -maxStep) return prev - maxStep;
+  return target;
 }
 
 function findInputForStation(
@@ -62,7 +68,7 @@ export function tickGuns(
     const input = findInputForStation(inputs, station);
     const aimX = input?.aimX ?? 0;
     const aimY = input?.aimY ?? 0;
-    const angle = clampAimAngle(aimX, aimY, side, prevAngle);
+    const angle = clampAimAngle(aimX, aimY, side, prevAngle, dt);
     station.aimAngle = angle;
 
     const baseOffsetY = side === "top" ? GUN_BASE_OFFSET_Y : -GUN_BASE_OFFSET_Y;

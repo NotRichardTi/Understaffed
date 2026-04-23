@@ -1,0 +1,32 @@
+{
+  "name": "understaffed",
+  "version": "0.1.0",
+  "description": "Understaffed — co-op space shooter for Vibe Jam 2026",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "server:dev": "tsx watch server/index.ts",
+    "server:start": "tsx server/index.ts",
+    "start": "tsx server/index.ts"
+  },
+  "dependencies": {
+    "@babylonjs/core": "^9.3.1",
+    "@babylonjs/gui": "^9.3.4",
+    "@colyseus/schema": "^3.0.76",
+    "@colyseus/ws-transport": "^0.16.5",
+    "colyseus": "^0.16.5",
+    "colyseus.js": "^0.16.22",
+    "express": "^5.2.1",
+    "tsx": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.6.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.8"
+  }
+}

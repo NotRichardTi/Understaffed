@@ -27,13 +27,4 @@ export function tickCleanup(state: GameState): void {
       recycleEnemy(state, e);
     }
   }
-
-  for (let i = state.xpOrbs.length - 1; i >= 0; i--) {
-    const o = state.xpOrbs[i]!;
-    const dx = o.position.x - shipX;
-    const dy = o.position.y - shipY;
-    if (Math.abs(dx) > DESPAWN_HALF_W || Math.abs(dy) > DESPAWN_HALF_H) {
-      state.xpOrbs.splice(i, 1);
-    }
-  }
 }

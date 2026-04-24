@@ -51,7 +51,7 @@ function beginTransit(state: GameState, crew: Crew, target: Station): void {
 export function tickTransit(state: GameState, inputs: InputFrame[]): void {
   for (const input of inputs) {
     if (input.stationSwitchRequest) {
-      const human = state.crew.find((c) => c.isHuman);
+      const human = state.crew.find((c) => c.id === input.playerId && c.isHuman);
       if (human) {
         const target = resolveDestination(state, input.stationSwitchRequest);
         if (target) beginTransit(state, human, target);

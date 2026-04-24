@@ -1,6 +1,6 @@
 import { NO_ID, NO_TICK, type GameState, type Station } from "@shared/state/gameState.js";
 import { TICK_HZ } from "@shared/content/tuning.js";
-import { getMode, getSelectedBot, setLevelUpActive } from "../input/keyboard.js";
+import { getMode, getSelectedBot, setBotIds, setCmdDestinations, setLevelUpActive } from "../input/keyboard.js";
 
 export interface Hud {
   update: (state: GameState) => void;
@@ -195,9 +195,15 @@ const STYLE = `
   color: #ffcc66;
   border-radius: 2px;
   display: none;
-  line-height: 1.45;
+  flex-direction: column;
+  gap: 3px;
+  line-height: 1.3;
 }
-.hud__cmd-prompt[data-active="true"] { display: block; }
+.hud__cmd-prompt[data-active="true"] { display: flex; }
+.hud__cmd-title { opacity: 0.85; margin-bottom: 2px; }
+.hud__cmd-row { display: flex; align-items: center; gap: 8px; }
+.hud__cmd-row.is-empty { opacity: 0.55; font-style: italic; }
+.hud__cmd-row.is-cancel { opacity: 0.75; }
 .hud__xp-wrap {
   position: absolute;
   bottom: 54px;
@@ -504,6 +510,11 @@ export function createHud(cb: HudCallbacks = {}): Hud {
       const mode = getMode();
       const selectedBot = getSelectedBot();
 
+      const bots = state.crew.filter((c) => !c.isHuman);
+      const botIndexById = new Map<string, number>();
+      bots.forEach((b, i) => botIndexById.set(b.id, i));
+      setBotIds(bots.map((b) => b.id));
+
       const menuActive = mode === "self-switch";
       menu.setAttribute("data-active", menuActive ? "true" : "false");
       if (menuActive) {
@@ -518,7 +529,7 @@ export function createHud(cb: HudCallbacks = {}): Hud {
             if (isCurrent) status = "(you)";
             else if (!occupant) status = "(empty)";
             else if (occupant.isHuman) status = "(player)";
-            else status = `(swap w/ bot ${occupant.id.slice(-1)})`;
+            else status = `(swap w/ bot ${(botIndexById.get(occupant.id) ?? 0) + 1})`;
             const cls = [
               "hud__menu-row",
               isCurrent ? "is-current" : "",
@@ -531,11 +542,10 @@ export function createHud(cb: HudCallbacks = {}): Hud {
           .join("");
       }
 
-      const bots = state.crew.filter((c) => !c.isHuman);
       const rosterHtml = bots
-        .map((c) => {
+        .map((c, i) => {
           const color = CREW_COLOR_HEX[c.id] ?? "#ccc";
-          const label = `BOT ${c.id.slice(-1)}`;
+          const label = `BOT ${i + 1}`;
           const loc = c.pendingStationId
             ? `→ ${labelFor(c.pendingStationId)}`
             : labelFor(c.currentStationId);
@@ -543,14 +553,36 @@ export function createHud(cb: HudCallbacks = {}): Hud {
           return `<div class="${cls}"><span class="hud__roster-dot" style="background:${color}"></span><span>${label}</span><span style="margin-left:auto;opacity:0.8">${loc}</span></div>`;
         })
         .join("");
-      roster.innerHTML = `<div class="hud__roster-title">CREW — press 1-3 to command</div>${rosterHtml}`;
+      const cmdRange = bots.length > 0 ? `1-${bots.length}` : "—";
+      roster.innerHTML = `<div class="hud__roster-title">CREW — press ${cmdRange} to command</div>${rosterHtml}`;
 
       if (mode === "cmd-pick-dest" && selectedBot) {
-        const label = `BOT ${selectedBot.slice(-1)}`;
-        cmdPrompt.textContent = `${label} → 1:DRV  2:REP  3:GUN  4:CANCEL`;
+        const selBot = state.crew.find((c) => c.id === selectedBot);
+        const botIdx = botIndexById.get(selectedBot) ?? 0;
+        const avail =
+          selBot && selBot.pendingStationId === NO_ID
+            ? state.stations.filter(
+                (s) =>
+                  s.occupantCrewId === NO_ID && s.id !== selBot.currentStationId,
+              )
+            : [];
+        setCmdDestinations(avail.map((s) => s.id));
+        const optRows = avail
+          .map(
+            (s, i) =>
+              `<div class="hud__cmd-row"><span class="hud__menu-hotkey">${i + 1}</span><span>${labels[s.id] ?? s.id}</span></div>`,
+          )
+          .join("");
+        const emptyRow =
+          avail.length === 0
+            ? `<div class="hud__cmd-row is-empty"><span>no open stations</span></div>`
+            : "";
+        const cancelKey = avail.length + 1;
+        cmdPrompt.innerHTML = `<div class="hud__cmd-title">BOT ${botIdx + 1} → SEND TO</div>${optRows}${emptyRow}<div class="hud__cmd-row is-cancel"><span class="hud__menu-hotkey">${cancelKey}</span><span>CANCEL</span></div>`;
         cmdPrompt.setAttribute("data-active", "true");
       } else {
         cmdPrompt.setAttribute("data-active", "false");
+        setCmdDestinations([]);
       }
 
       const xpPct = state.xpToNext > 0 ? (state.xp / state.xpToNext) * 100 : 0;

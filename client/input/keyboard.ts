@@ -29,17 +29,16 @@ const SELF_SWITCH_STATIONS: Record<string, string> = {
   "5": "station-gun-3",
 };
 
-const CMD_DEST: Record<string, string> = {
-  "1": "station-driver",
-  "2": "station-repair",
-  "3": "gun-nearest",
-};
+let botIdByIndex: string[] = [];
+let cmdDestByIndex: string[] = [];
 
-const CMD_BOT: Record<string, string> = {
-  "1": "crew-1",
-  "2": "crew-2",
-  "3": "crew-3",
-};
+export function setBotIds(ids: string[]): void {
+  botIdByIndex = ids;
+}
+
+export function setCmdDestinations(stationIds: string[]): void {
+  cmdDestByIndex = stationIds;
+}
 
 function handleDigit(k: string): void {
   if (mode === "self-switch") {
@@ -53,12 +52,13 @@ function handleDigit(k: string): void {
     return;
   }
   if (mode === "cmd-pick-dest") {
-    if (k === "4") {
+    const digitIdx = parseInt(k, 10) - 1;
+    if (digitIdx === cmdDestByIndex.length) {
       mode = "idle";
       selectedBotId = null;
       return;
     }
-    const dest = CMD_DEST[k];
+    const dest = cmdDestByIndex[digitIdx];
     if (dest && selectedBotId) {
       pendingAiCommand = { targetCrewId: selectedBotId, destination: dest };
     }
@@ -66,7 +66,8 @@ function handleDigit(k: string): void {
     selectedBotId = null;
     return;
   }
-  const botId = CMD_BOT[k];
+  const digitIdx = parseInt(k, 10) - 1;
+  const botId = botIdByIndex[digitIdx];
   if (botId) {
     selectedBotId = botId;
     mode = "cmd-pick-dest";

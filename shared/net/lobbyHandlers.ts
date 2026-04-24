@@ -106,6 +106,29 @@ export function handleToggleAiFill(state: RoomState, sessionId: string): void {
   state.aiFill = !state.aiFill;
 }
 
+export function handleDebugEndGame(state: RoomState, sessionId: string, outcome: "gameover" | "victory"): void {
+  if (state.phase !== "ingame") return;
+  if (sessionId !== state.hostSessionId) return;
+  if (state.game.phase !== "playing" && state.game.phase !== "levelup") return;
+  state.game.phase = outcome;
+}
+
+export function handleReturnToLobby(state: RoomState, sessionId: string): boolean {
+  if (state.phase !== "ingame") return false;
+  if (sessionId !== state.hostSessionId) return false;
+  const gp = state.game.phase;
+  if (gp !== "gameover" && gp !== "victory") return false;
+
+  state.game = createInitialState();
+  state.sessionToCrew.clear();
+  state.players.forEach((p) => {
+    p.stationId = "";
+    p.ready = false;
+  });
+  state.phase = "lobby";
+  return true;
+}
+
 export function handleStartGame(state: RoomState, sessionId: string): boolean {
   if (state.phase !== "lobby") return false;
   if (sessionId !== state.hostSessionId) return false;

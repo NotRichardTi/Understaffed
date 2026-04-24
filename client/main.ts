@@ -31,6 +31,12 @@ const engine = new Engine(canvas, true, {
 
 attachKeyboard(window);
 
+window.addEventListener("keydown", (e) => {
+  if (!currentNet || currentNet.state.phase !== "ingame") return;
+  if (e.key === "F9") { e.preventDefault(); currentNet.send("debugEndGame", { outcome: "gameover" }); }
+  else if (e.key === "F10") { e.preventDefault(); currentNet.send("debugEndGame", { outcome: "victory" }); }
+});
+
 let currentScene: Scene | null = null;
 let currentScreen: ScreenHandle | null = null;
 let currentLobby: LobbyHandle | null = null;
@@ -39,6 +45,7 @@ let currentHud: Hud | null = null;
 let currentRenderStop: (() => void) | null = null;
 let lobbyPollStop: number | null = null;
 let lobbyPhaseCheckStop: number | null = null;
+let ingamePhaseCheckStop: number | null = null;
 
 function disposeScene(): void {
   currentRenderStop?.();
@@ -51,6 +58,7 @@ function disposeScene(): void {
   currentLobby = null;
   if (lobbyPollStop !== null) { clearInterval(lobbyPollStop); lobbyPollStop = null; }
   if (lobbyPhaseCheckStop !== null) { clearInterval(lobbyPhaseCheckStop); lobbyPhaseCheckStop = null; }
+  if (ingamePhaseCheckStop !== null) { clearInterval(ingamePhaseCheckStop); ingamePhaseCheckStop = null; }
   currentScene?.dispose();
   currentScene = null;
 }
@@ -148,7 +156,12 @@ function enterGame(): void {
 
   const handles = createGameScene(engine, net.state.game);
   currentScene = handles.scene;
-  currentHud = createHud(() => net.state.sessionToCrew.get(net.sessionId) ?? "");
+  currentHud = createHud({
+    getMyCrewId: () => net.state.sessionToCrew.get(net.sessionId) ?? "",
+    getIsHost: () => net.state.hostSessionId === net.sessionId,
+    onRetry: () => net.send("returnToLobby"),
+    onQuitMenu: () => goMainMenu(),
+  });
   currentRenderStop = startRenderLoop({
     scene: handles.scene,
     net,
@@ -157,6 +170,21 @@ function enterGame(): void {
       currentHud?.update(next);
     },
   });
+  ingamePhaseCheckStop = window.setInterval(() => {
+    if (net.state.phase === "lobby") returnToLobbyFromGame();
+  }, 100);
+}
+
+function returnToLobbyFromGame(): void {
+  if (!currentNet) return;
+  if (ingamePhaseCheckStop !== null) { clearInterval(ingamePhaseCheckStop); ingamePhaseCheckStop = null; }
+  currentRenderStop?.();
+  currentRenderStop = null;
+  currentHud?.dispose();
+  currentHud = null;
+  currentScene?.dispose();
+  currentScene = null;
+  enterLobby();
 }
 
 goMainMenu();

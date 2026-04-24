@@ -4,10 +4,12 @@ import { createInitialState } from "../../shared/state/gameState.js";
 import { step, TICK_DT_SEC, TICK_HZ } from "../../shared/systems/step.js";
 import { emptyInputFrame, type InputFrame } from "../../shared/state/inputFrame.js";
 import {
+  handleDebugEndGame,
   handlePickCharacter,
   handlePickStation,
   handlePlayerJoin,
   handlePlayerLeave,
+  handleReturnToLobby,
   handleStartGame,
   handleToggleAiFill,
   handleToggleReady,
@@ -51,6 +53,13 @@ export class GameRoom extends Room<RoomState> {
     });
     this.onMessage("startGame", (client) => {
       handleStartGame(this.state, client.sessionId);
+    });
+    this.onMessage("returnToLobby", (client) => {
+      handleReturnToLobby(this.state, client.sessionId);
+    });
+    this.onMessage("debugEndGame", (client, data: { outcome?: "gameover" | "victory" }) => {
+      const outcome = data?.outcome === "victory" ? "victory" : "gameover";
+      handleDebugEndGame(this.state, client.sessionId, outcome);
     });
 
     console.log(`[GameRoom ${this.roomId}] created code=${state.lobbyCode}`);

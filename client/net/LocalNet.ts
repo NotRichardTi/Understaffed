@@ -1,8 +1,10 @@
 import { RoomState } from "@shared/net/roomState.js";
 import {
+  handleDebugEndGame,
   handlePickCharacter,
   handlePickStation,
   handlePlayerJoin,
+  handleReturnToLobby,
   handleStartGame,
   handleToggleAiFill,
   handleToggleReady,
@@ -57,6 +59,7 @@ export function createLocalNet(playerName: string = "Player"): NetClient {
   return {
     state,
     sessionId: LOCAL_SESSION,
+    isSinglePlayer: true,
     send(type: NetMessageType, data?: unknown): void {
       switch (type) {
         case "pickCharacter": {
@@ -75,9 +78,22 @@ export function createLocalNet(playerName: string = "Player"): NetClient {
         case "toggleAiFill":
           handleToggleAiFill(state, LOCAL_SESSION);
           break;
-        case "startGame":
+        case "startGame": {
+          const p = state.players.get(LOCAL_SESSION);
+          if (p && !p.ready && p.stationId && p.charIdx >= 0) {
+            handleToggleReady(state, LOCAL_SESSION);
+          }
           handleStartGame(state, LOCAL_SESSION);
           break;
+        }
+        case "returnToLobby":
+          handleReturnToLobby(state, LOCAL_SESSION);
+          break;
+        case "debugEndGame": {
+          const d = data as { outcome?: "gameover" | "victory" } | undefined;
+          handleDebugEndGame(state, LOCAL_SESSION, d?.outcome === "victory" ? "victory" : "gameover");
+          break;
+        }
         case "leave":
         case "input":
           break;

@@ -27,6 +27,7 @@ export async function createRemoteNet(opts: RemoteNetOptions): Promise<NetClient
       return room.state;
     },
     sessionId: room.sessionId,
+    isSinglePlayer: false,
     send(type: NetMessageType, data?: unknown): void {
       room.send(type, data);
     },

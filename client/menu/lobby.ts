@@ -60,6 +60,7 @@ function makeSpacer(h: number): Rectangle {
 }
 
 export function createLobby(scene: Scene, net: NetClient, actions: LobbyActions): LobbyHandle {
+  const isSP = net.isSinglePlayer;
   const t = AdvancedDynamicTexture.CreateFullscreenUI("LobbyUI", true, scene);
   t.idealWidth = 1280;
   t.renderAtIdealSize = true;
@@ -73,9 +74,55 @@ export function createLobby(scene: Scene, net: NetClient, actions: LobbyActions)
 
   const header = makeTitle("LOBBY", 36);
   root.addControl(header);
+
+  const codeRow = new StackPanel("codeRow");
+  codeRow.isVertical = false;
+  codeRow.height = "32px";
+  codeRow.spacing = 8;
   const codeLine = makeText("", 16, "#c8d2df");
-  root.addControl(codeLine);
-  root.addControl(makeSpacer(12));
+  codeLine.resizeToFit = true;
+  codeRow.addControl(codeLine);
+  const copyBtn = Button.CreateSimpleButton("copyCode", "Copy");
+  copyBtn.width = "72px";
+  copyBtn.height = "28px";
+  copyBtn.color = "#e6edf3";
+  copyBtn.background = "#1f2631";
+  copyBtn.thickness = 1;
+  copyBtn.cornerRadius = 4;
+  copyBtn.fontSize = 13;
+  copyBtn.fontFamily = "ui-monospace, monospace";
+  let copyResetTimer: ReturnType<typeof setTimeout> | null = null;
+  copyBtn.onPointerUpObservable.add(() => {
+    const code = net.state.lobbyCode;
+    if (!code) return;
+    void navigator.clipboard.writeText(code).then(
+      () => {
+        copyBtn.textBlock!.text = "Copied!";
+        copyBtn.background = "#2b8a4e";
+        if (copyResetTimer) clearTimeout(copyResetTimer);
+        copyResetTimer = setTimeout(() => {
+          copyBtn.textBlock!.text = "Copy";
+          copyBtn.background = "#1f2631";
+          copyResetTimer = null;
+        }, 1200);
+      },
+      () => {
+        copyBtn.textBlock!.text = "Failed";
+        copyBtn.background = "#3a1f26";
+        if (copyResetTimer) clearTimeout(copyResetTimer);
+        copyResetTimer = setTimeout(() => {
+          copyBtn.textBlock!.text = "Copy";
+          copyBtn.background = "#1f2631";
+          copyResetTimer = null;
+        }, 1200);
+      },
+    );
+  });
+  codeRow.addControl(copyBtn);
+  if (!isSP) {
+    root.addControl(codeRow);
+    root.addControl(makeSpacer(12));
+  }
 
   root.addControl(makeText("CHARACTER", 14));
   const charRow = new StackPanel("charRow");
@@ -162,7 +209,7 @@ export function createLobby(scene: Scene, net: NetClient, actions: LobbyActions)
   readyBtn.onPointerUpObservable.add(() => {
     net.send("toggleReady");
   });
-  actionRow.addControl(readyBtn);
+  if (!isSP) actionRow.addControl(readyBtn);
 
   const aiFillBtn = Button.CreateSimpleButton("aiFill", "AI Fill: ON");
   aiFillBtn.width = "180px";
@@ -276,17 +323,22 @@ export function createLobby(scene: Scene, net: NetClient, actions: LobbyActions)
     aiFillBtn.background = state.aiFill ? "#2b5d8a" : "#1f2631";
 
     startBtn.isVisible = isHost;
-    let allReady = state.players.size > 0;
-    state.players.forEach((p) => { if (!p.ready) allReady = false; });
-    startBtn.alpha = allReady ? 1 : 0.4;
-    startBtn.isHitTestVisible = allReady;
+    let canStart: boolean;
+    if (isSP) {
+      canStart = !!me && me.charIdx >= 0 && me.stationId !== "";
+    } else {
+      canStart = state.players.size > 0;
+      state.players.forEach((p) => { if (!p.ready) canStart = false; });
+    }
+    startBtn.alpha = canStart ? 1 : 0.4;
+    startBtn.isHitTestVisible = canStart;
 
     if (!me) {
       hintLabel.text = "";
       readyBtn.alpha = 0.4;
       readyBtn.isHitTestVisible = false;
     } else if (me.stationId === "") {
-      hintLabel.text = "Pick a station to ready up";
+      hintLabel.text = isSP ? "Pick a station to start" : "Pick a station to ready up";
       readyBtn.alpha = 0.4;
       readyBtn.isHitTestVisible = false;
       readyBtn.textBlock!.text = "Ready";
@@ -303,6 +355,10 @@ export function createLobby(scene: Scene, net: NetClient, actions: LobbyActions)
 
   return {
     dispose() {
+      if (copyResetTimer) {
+        clearTimeout(copyResetTimer);
+        copyResetTimer = null;
+      }
       t.removeControl(root);
       root.dispose();
       t.dispose();

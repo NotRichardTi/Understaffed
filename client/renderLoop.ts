@@ -18,6 +18,7 @@ export function startRenderLoop(opts: RenderLoopOptions): () => void {
   let prev: GameState = net.state.game.clone() as GameState;
   let next: GameState = net.state.game.clone() as GameState;
   let lastTick = net.state.game.tick;
+  let lastPhase = net.state.game.phase;
   let tickStartMs = performance.now();
   let lastInputSentTick = -1;
 
@@ -31,10 +32,11 @@ export function startRenderLoop(opts: RenderLoopOptions): () => void {
     const stationKind = (station?.kind ?? null) as StationKind | null;
     const gunSide = (station?.gunSide ? (station.gunSide as GunSide) : null);
 
-    if (net.state.game.tick !== lastTick) {
+    if (net.state.game.tick !== lastTick || net.state.game.phase !== lastPhase) {
       prev = next;
       next = net.state.game.clone() as GameState;
       lastTick = net.state.game.tick;
+      lastPhase = net.state.game.phase;
       tickStartMs = nowMs;
     }
 

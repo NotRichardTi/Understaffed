@@ -106,12 +106,48 @@ const STYLE = `
   display: none;
   align-items: center;
   justify-content: center;
-  font-size: 48px;
-  letter-spacing: 0.2em;
   color: #ff7878;
   background: rgba(0,0,0,0.55);
 }
 .hud__gameover[data-active="true"] { display: flex; }
+.hud__end-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+.hud__end-title {
+  font-size: 48px;
+  letter-spacing: 0.2em;
+}
+.hud__end-buttons {
+  display: flex;
+  gap: 10px;
+}
+.hud__end-btn {
+  pointer-events: auto;
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 10px 18px;
+  background: rgba(20,28,44,0.9);
+  color: #e6edf3;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.hud__end-btn:hover { background: rgba(40,56,88,0.95); }
+.hud__end-btn--primary {
+  background: #2b5d8a;
+  border-color: #5a9fd4;
+}
+.hud__end-btn--primary:hover { background: #3872a8; }
+.hud__end-btn--victory {
+  background: #1f6d3a;
+  border-color: #4fbf7a;
+}
+.hud__end-btn--victory:hover { background: #2a8c4d; }
 .hud__roster {
   position: absolute;
   top: 18px;
@@ -299,12 +335,11 @@ const STYLE = `
   display: none;
   align-items: center;
   justify-content: center;
-  font-size: 42px;
-  letter-spacing: 0.26em;
   color: #6fffad;
   background: rgba(2,10,6,0.7);
 }
 .hud__victory[data-active="true"] { display: flex; }
+.hud__victory .hud__end-title { font-size: 42px; letter-spacing: 0.26em; }
 `;
 
 const CREW_COLOR_HEX: Record<string, string> = {
@@ -342,7 +377,18 @@ function buildStationLabels(stations: Station[]): Record<string, string> {
   return labels;
 }
 
-export function createHud(getMyCrewId: () => string = () => ""): Hud {
+export interface HudCallbacks {
+  getMyCrewId?: () => string;
+  getIsHost?: () => boolean;
+  onRetry?: () => void;
+  onQuitMenu?: () => void;
+}
+
+export function createHud(cb: HudCallbacks = {}): Hud {
+  const getMyCrewId = cb.getMyCrewId ?? (() => "");
+  const getIsHost = cb.getIsHost ?? (() => false);
+  const onRetry = cb.onRetry ?? (() => {});
+  const onQuitMenu = cb.onQuitMenu ?? (() => {});
   const style = document.createElement("style");
   style.textContent = STYLE;
   document.head.appendChild(style);
@@ -380,8 +426,24 @@ export function createHud(getMyCrewId: () => string = () => ""): Hud {
       <div class="hud__boss-label" data-ref="boss-label">BOSS</div>
       <div class="hud__boss-bar"><div class="hud__boss-fill" data-ref="boss-fill" style="width:100%"></div></div>
     </div>
-    <div class="hud__gameover" data-ref="gameover">HULL BREACH</div>
-    <div class="hud__victory" data-ref="victory">VICTORY</div>
+    <div class="hud__gameover" data-ref="gameover">
+      <div class="hud__end-inner">
+        <div class="hud__end-title">HULL BREACH</div>
+        <div class="hud__end-buttons">
+          <button class="hud__end-btn hud__end-btn--primary" data-ref="retry-btn">Retry</button>
+          <button class="hud__end-btn" data-ref="gameover-quit">Quit to Menu</button>
+        </div>
+      </div>
+    </div>
+    <div class="hud__victory" data-ref="victory">
+      <div class="hud__end-inner">
+        <div class="hud__end-title">VICTORY</div>
+        <div class="hud__end-buttons">
+          <button class="hud__end-btn hud__end-btn--victory" data-ref="replay-btn">Replay</button>
+          <button class="hud__end-btn" data-ref="victory-quit">Quit to Menu</button>
+        </div>
+      </div>
+    </div>
   `;
   document.body.appendChild(root);
 
@@ -401,6 +463,14 @@ export function createHud(getMyCrewId: () => string = () => ""): Hud {
   const bossBox = root.querySelector<HTMLDivElement>('[data-ref="boss"]')!;
   const gameOver = root.querySelector<HTMLDivElement>('[data-ref="gameover"]')!;
   const victory = root.querySelector<HTMLDivElement>('[data-ref="victory"]')!;
+  const retryBtn = root.querySelector<HTMLButtonElement>('[data-ref="retry-btn"]')!;
+  const replayBtn = root.querySelector<HTMLButtonElement>('[data-ref="replay-btn"]')!;
+  const gameOverQuitBtn = root.querySelector<HTMLButtonElement>('[data-ref="gameover-quit"]')!;
+  const victoryQuitBtn = root.querySelector<HTMLButtonElement>('[data-ref="victory-quit"]')!;
+  retryBtn.addEventListener("click", () => onRetry());
+  replayBtn.addEventListener("click", () => onRetry());
+  gameOverQuitBtn.addEventListener("click", () => onQuitMenu());
+  victoryQuitBtn.addEventListener("click", () => onQuitMenu());
 
   return {
     update: (state: GameState) => {
@@ -516,6 +586,9 @@ export function createHud(getMyCrewId: () => string = () => ""): Hud {
 
       gameOver.setAttribute("data-active", state.phase === "gameover" ? "true" : "false");
       victory.setAttribute("data-active", state.phase === "victory" ? "true" : "false");
+      const isHost = getIsHost();
+      retryBtn.style.display = isHost ? "" : "none";
+      replayBtn.style.display = isHost ? "" : "none";
     },
     dispose: () => {
       root.remove();

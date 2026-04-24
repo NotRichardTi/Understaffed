@@ -26,6 +26,7 @@ import {
   SNIPER_SHOT_DAMAGE,
   SNIPER_SHOT_SIZE,
   MINIBOSS_SPEED,
+  MINIBOSS_BOOST_SPEED,
   MINIBOSS_STOP_DIST,
   MINIBOSS_FIRE_COOLDOWN_SEC,
   MINIBOSS_SPAWN_COOLDOWN_SEC,
@@ -34,8 +35,13 @@ import {
   ENEMY_BULLET_SIZE,
   ENEMY_BULLET_TTL_SEC,
   BOSS_SPEED,
+  BOSS_BOOST_SPEED,
   BOSS_FIRE_COOLDOWN_SEC,
-  WORLD_HALF_W,
+  CAMERA_HALF_W,
+  CAMERA_HALF_H,
+  ENEMY_LEASH_NEAR_MAG,
+  ENEMY_LEASH_BOOST_MAX_MAG,
+  ENEMY_LEASH_EXIT_MARGIN,
 } from "../content/tuning.js";
 import { nextId } from "./ids.js";
 
@@ -128,8 +134,38 @@ function tickSniper(state: GameState, e: Enemy, dt: number, shipX: number, shipY
   }
 }
 
+function leashedSpeed(
+  e: Enemy,
+  shipX: number,
+  shipY: number,
+  baseSpeed: number,
+  boostSpeed: number,
+): number {
+  const dx = e.position.x - shipX;
+  const dy = e.position.y - shipY;
+  const mag = Math.hypot(dx / CAMERA_HALF_W, dy / CAMERA_HALF_H);
+  if (mag >= ENEMY_LEASH_BOOST_MAX_MAG) {
+    const len = Math.hypot(dx, dy) || 1;
+    const dirX = dx / len;
+    const dirY = dy / len;
+    const sp = e.size / 2;
+    const marginX = CAMERA_HALF_W + sp + ENEMY_LEASH_EXIT_MARGIN;
+    const marginY = CAMERA_HALF_H + sp + ENEMY_LEASH_EXIT_MARGIN;
+    const distX = Math.abs(dirX) > 1e-6 ? marginX / Math.abs(dirX) : Infinity;
+    const distY = Math.abs(dirY) > 1e-6 ? marginY / Math.abs(dirY) : Infinity;
+    const snapDist = Math.min(distX, distY);
+    e.position.x = shipX + dirX * snapDist;
+    e.position.y = shipY + dirY * snapDist;
+    return boostSpeed;
+  }
+  if (mag <= ENEMY_LEASH_NEAR_MAG) return baseSpeed;
+  const t = Math.min(1, (mag - ENEMY_LEASH_NEAR_MAG) / (1 - ENEMY_LEASH_NEAR_MAG));
+  return baseSpeed + (boostSpeed - baseSpeed) * t;
+}
+
 function tickMiniboss(state: GameState, e: Enemy, dt: number, shipX: number, shipY: number): void {
-  approach(e, shipX, shipY, MINIBOSS_SPEED, MINIBOSS_STOP_DIST);
+  const speed = leashedSpeed(e, shipX, shipY, MINIBOSS_SPEED, MINIBOSS_BOOST_SPEED);
+  approach(e, shipX, shipY, speed, MINIBOSS_STOP_DIST);
   e.fireCooldownSec -= dt;
   if (e.fireCooldownSec <= 0) {
     e.fireCooldownSec = MINIBOSS_FIRE_COOLDOWN_SEC;
@@ -154,14 +190,15 @@ function tickMiniboss(state: GameState, e: Enemy, dt: number, shipX: number, shi
 }
 
 function tickBoss(state: GameState, e: Enemy, dt: number, shipX: number, shipY: number): void {
+  const speed = leashedSpeed(e, shipX, shipY, BOSS_SPEED, BOSS_BOOST_SPEED);
   const hpFrac = e.hp / e.maxHp;
   if (hpFrac < 0.5 && (e.phase ?? 1) < 2) e.phase = 2;
 
-  const distToCenter = Math.hypot(e.position.x, e.position.y);
-  if (distToCenter > WORLD_HALF_W * 0.55) {
-    approach(e, 0, 0, BOSS_SPEED, 20);
+  const distToShip = Math.hypot(e.position.x - shipX, e.position.y - shipY);
+  if (distToShip > 500) {
+    approach(e, shipX, shipY, speed, 20);
   } else {
-    const targetY = Math.sin(state.tick / 40) * 180;
+    const targetY = shipY + Math.sin(state.tick / 40) * 180;
     approach(e, e.position.x, targetY, BOSS_SPEED, 4);
   }
 

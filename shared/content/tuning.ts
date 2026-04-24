@@ -1,14 +1,24 @@
 export const TICK_HZ = 30;
 export const TICK_DT_SEC = 1 / TICK_HZ;
 
-export const WORLD_HALF_W = 700;
-export const WORLD_HALF_H = 360;
-export const SPAWN_MARGIN = 40;
-
-export const SHIP_POS_X = -300;
+export const SHIP_POS_X = 0;
 export const SHIP_POS_Y = 0;
 export const SHIP_HALF_W = 128;
 export const SHIP_HALF_H = 64;
+
+export const SPAWN_RING_HALF_W = 720;
+export const SPAWN_RING_HALF_H = 440;
+export const DESPAWN_HALF_W = 940;
+export const DESPAWN_HALF_H = 600;
+
+export const CAMERA_HALF_W = 640;
+export const CAMERA_HALF_H = 360;
+
+export const ENEMY_LEASH_NEAR_MAG = 0.85;
+export const ENEMY_LEASH_BOOST_MAX_MAG = 1.65;
+export const ENEMY_LEASH_EXIT_MARGIN = 20;
+export const SPAWN_GUN_BIAS_IDLE = 0.5;
+export const SPAWN_ARC_NARROWING = 0.5;
 
 export const HULL_START = 100;
 export const SHIELD_START = 100;
@@ -58,7 +68,8 @@ export const SNIPER_SHOT_DAMAGE = 26;
 export const SNIPER_SHOT_SIZE = 7;
 
 export const MINIBOSS_HP = 260;
-export const MINIBOSS_SPEED = 50;
+export const MINIBOSS_SPEED = 140;
+export const MINIBOSS_BOOST_SPEED = 300;
 export const MINIBOSS_SIZE = 72;
 export const MINIBOSS_STOP_DIST = 500;
 export const MINIBOSS_FIRE_COOLDOWN_SEC = 2.2;
@@ -68,6 +79,7 @@ export const MINIBOSS_INTERVAL_SEC = 300;
 
 export const BOSS_HP = 1400;
 export const BOSS_SPEED = 40;
+export const BOSS_BOOST_SPEED = 260;
 export const BOSS_SIZE = 110;
 export const BOSS_STOP_DIST = 450;
 export const BOSS_FIRE_COOLDOWN_SEC = 1.2;

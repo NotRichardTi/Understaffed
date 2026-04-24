@@ -8,25 +8,21 @@ export interface RenderLoopOptions {
   scene: Scene;
   net: NetClient;
   render: (prev: GameState, next: GameState, alpha: number) => void;
-  onStarfieldUpdate?: (dtSec: number) => void;
 }
 
 const TICK_DT_MS = TICK_DT_SEC * 1000;
 
 export function startRenderLoop(opts: RenderLoopOptions): () => void {
-  const { scene, net, render, onStarfieldUpdate } = opts;
+  const { scene, net, render } = opts;
 
   let prev: GameState = net.state.game.clone() as GameState;
   let next: GameState = net.state.game.clone() as GameState;
   let lastTick = net.state.game.tick;
   let tickStartMs = performance.now();
   let lastInputSentTick = -1;
-  let lastRenderMs = performance.now();
 
   const observer = scene.onBeforeRenderObservable.add(() => {
     const nowMs = performance.now();
-    const dtSec = (nowMs - lastRenderMs) / 1000;
-    lastRenderMs = nowMs;
 
     const crewId = net.state.sessionToCrew.get(net.sessionId) ?? "";
     const crew = crewId ? net.state.game.crew.find((c) => c.id === crewId) : undefined;
@@ -49,7 +45,6 @@ export function startRenderLoop(opts: RenderLoopOptions): () => void {
     }
 
     const alpha = Math.min(1, (nowMs - tickStartMs) / TICK_DT_MS);
-    onStarfieldUpdate?.(dtSec);
     render(prev, next, alpha);
   });
 

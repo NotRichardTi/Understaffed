@@ -30,7 +30,7 @@ These are settled. Do not relitigate without explicit sign-off.
 | Gun layout | Randomized per run: either 2-top/1-bottom or 1-top/2-bottom |
 | Enemy spawn balance | Heavier spawns on the side with more guns |
 | Gun control | WASD aims, auto-fires; 180° swivel arc |
-| Driver control | Move ship freely within a bounded box (up/down/left/right) |
+| Driver control | Move ship freely through the world (up/down/left/right); camera follows the ship |
 | Repair | Hold to heal the shield; shield has a cooldown if fully depleted |
 | Shield/hull | Shield absorbs damage; when down, hull takes direct hits |
 | Station switching | 3-second transit; the leaving gun stops firing during transit; player visible in destination glass window after transit completes |
@@ -55,10 +55,10 @@ These are settled. Do not relitigate without explicit sign-off.
 ## 3. Core Gameplay Loop
 
 1. Player joins/hosts a lobby, enters the game.
-2. Ship appears mid-screen-left. Parallax starfield scrolls rightward to left to imply forward motion. Ship cannot change its x-screen position meaningfully (driver moves within a small box).
-3. Enemies spawn from the right edge (and from top/bottom off-screen) and approach the ship. Some shoot, some melee, some snipe from range.
+2. Ship appears centered on screen. The camera follows the ship (Vampire Survivors–style), so the ship stays roughly anchored to the middle of the view while the world scrolls around it as the driver moves. The parallax starfield shifts based on camera velocity to sell the sense of motion.
+3. Enemies spawn on a ring just outside the camera's view and approach the ship. Spawns are weighted toward the ship's gun-heavy hemisphere (see §4.6). Some shoot, some melee, some snipe from range.
 4. Crew at gun stations aim with WASD; guns auto-fire projectiles in whatever direction the stick is pointed, within a 180° arc.
-5. Driver dodges incoming projectiles by moving the ship within its bounded box.
+5. Driver dodges incoming projectiles by moving the ship freely through the world; the camera follows.
 6. Repair crewmember holds a button to regenerate the shield.
 7. Enemies drop XP orbs on death. Orbs drift toward the ship (magnet radius). When the ship's XP bar fills, all gameplay pauses and the crew votes on one of three upgrade options.
 8. Every 5 minutes, a boss spawns. Defeat it to continue.
@@ -95,9 +95,9 @@ On run start, randomize whether the layout is 2-top/1-bottom or 1-bottom/2-top. 
 
 ### 4.4 Driver
 
-- Moves the ship within a bounded box (roughly the left third of the playfield).
+- Moves the ship freely through the world. The camera follows the ship (Vampire Survivors–style), keeping it roughly centered on screen.
 - Base movement speed: tune during playtest.
-- Cannot exit the box. Cannot leave the station without choosing a destination.
+- Cannot leave the station without choosing a destination.
 - Movement is snappy/arcade (no momentum), unless playtest shows momentum feels better.
 
 ### 4.5 Station Switching
@@ -110,7 +110,9 @@ On run start, randomize whether the layout is 2-top/1-bottom or 1-bottom/2-top. 
 
 ### 4.6 Enemies
 
-All enemies spawn from the right side of the screen and off-screen top/bottom. Spawn distribution is weighted toward whichever half of the ship has more guns (so a 2-top/1-bottom layout sees more top-side spawns).
+Enemies spawn on a ring just outside the camera's view, around the ship. Spawn distribution is weighted toward the gun-heavy hemisphere (so a 2-top/1-bottom layout sees more top-side spawns).
+
+**Camera recycling.** As the ship traverses the world, regular enemies that drift far outside the camera are recycled — despawned and re-emitted as fresh spawns on the outer ring. Regular enemies do **not** retain HP across recycles, which keeps synced state small. **Mini-bosses and bosses are exempt**: they retain HP and are never camera-recycled; they persist in-world until killed.
 
 | Enemy | Behavior | Threat |
 |---|---|---|
@@ -267,7 +269,7 @@ When you get to Phase 5:
 ### Phase 3 — All Stations Online (Days 5–7)
 - All 5 stations exist on the ship. Layout randomization.
 - Repair station: hold-to-heal shield. Shield bar in HUD. Shield cooldown.
-- Driver station: ship moves within a bounded box, WASD controls.
+- Driver station: ship moves freely through the world, WASD controls; camera hard-follows the ship.
 - Station switching: press `Q` to open station map, pick destination, 3-sec transit, glass goes dark during transit.
 - Only one station can be occupied at a time (player is alone; AI comes next phase).
 
@@ -363,7 +365,7 @@ Resolve these during playtest, not up front:
 
 - Exact shield regen rate, cooldown duration.
 - Exact gun fire rate baseline.
-- Exact driver movement speed and box dimensions.
+- Exact driver movement speed and camera-follow feel (hard-follow vs. deadzone/smoothing).
 - Enemy HP/damage curves.
 - Upgrade strengths.
 - Boss patterns (design mid-jam after core loop is proven fun).
@@ -372,4 +374,4 @@ Resolve these during playtest, not up front:
 
 ---
 
-*Last updated: 2026-04-18. Edit this file as decisions change.*
+*Last updated: 2026-04-23. Edit this file as decisions change.*

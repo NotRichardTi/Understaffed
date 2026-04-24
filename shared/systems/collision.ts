@@ -5,8 +5,6 @@ import {
   SHIP_HALF_H,
   SHIELD_COOLDOWN_SEC,
   SWARMER_MELEE_COOLDOWN_SEC,
-  WORLD_HALF_W,
-  WORLD_HALF_H,
   TICK_HZ,
 } from "../content/tuning.js";
 import { nextId } from "./ids.js";
@@ -49,15 +47,6 @@ export function tickShipEnemyPush(state: GameState): void {
     state.ship.position.x -= pushX * shipShare;
     state.ship.position.y -= pushY * shipShare;
   }
-
-  const minX = -WORLD_HALF_W + SHIP_HALF_W;
-  const maxX = WORLD_HALF_W - SHIP_HALF_W;
-  const minY = -WORLD_HALF_H + SHIP_HALF_H;
-  const maxY = WORLD_HALF_H - SHIP_HALF_H;
-  if (state.ship.position.x < minX) state.ship.position.x = minX;
-  if (state.ship.position.x > maxX) state.ship.position.x = maxX;
-  if (state.ship.position.y < minY) state.ship.position.y = minY;
-  if (state.ship.position.y > maxY) state.ship.position.y = maxY;
 }
 
 function aabbOverlap(

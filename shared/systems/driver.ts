@@ -1,12 +1,6 @@
 import type { GameState } from "../state/gameState.js";
 import type { InputFrame } from "../state/inputFrame.js";
-import {
-  DRIVER_SPEED,
-  WORLD_HALF_W,
-  WORLD_HALF_H,
-  SHIP_HALF_W,
-  SHIP_HALF_H,
-} from "../content/tuning.js";
+import { DRIVER_SPEED } from "../content/tuning.js";
 
 const INPUT_SMOOTH_RATE_PER_SEC = 22;
 
@@ -38,19 +32,6 @@ export function tickDriver(state: GameState, inputs: InputFrame[], dt: number): 
   if (mag < 0.02) return;
 
   const speed = DRIVER_SPEED * state.upgrades.driverSpeedMul;
-  let x = state.ship.position.x + sx * speed * dt;
-  let y = state.ship.position.y + sy * speed * dt;
-
-  const minX = -WORLD_HALF_W + SHIP_HALF_W;
-  const maxX = WORLD_HALF_W - SHIP_HALF_W;
-  const minY = -WORLD_HALF_H + SHIP_HALF_H;
-  const maxY = WORLD_HALF_H - SHIP_HALF_H;
-
-  if (x < minX) x = minX;
-  if (x > maxX) x = maxX;
-  if (y < minY) y = minY;
-  if (y > maxY) y = maxY;
-
-  state.ship.position.x = x;
-  state.ship.position.y = y;
+  state.ship.position.x += sx * speed * dt;
+  state.ship.position.y += sy * speed * dt;
 }

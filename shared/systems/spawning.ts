@@ -1,9 +1,10 @@
 import { Vec2, type GameState } from "../state/gameState.js";
 import { Enemy, type EnemyKind } from "../state/entities.js";
 import {
-  WORLD_HALF_W,
-  WORLD_HALF_H,
-  SPAWN_MARGIN,
+  SPAWN_RING_HALF_W,
+  SPAWN_RING_HALF_H,
+  SPAWN_GUN_BIAS_IDLE,
+  SPAWN_ARC_NARROWING,
   FIGHTER_HP,
   FIGHTER_SIZE,
   FIGHTER_FIRE_COOLDOWN_SEC,
@@ -54,52 +55,43 @@ function pickKind(weights: SpawnWeight[]): EnemyKind {
   return weights[0]!.kind;
 }
 
-type SpawnSide = "top" | "bottom" | "left" | "right";
-
-const SPAWN_SIDES: SpawnSide[] = ["top", "bottom", "left", "right"];
-
-function pickSpawnSide(): SpawnSide {
-  return SPAWN_SIDES[Math.floor(Math.random() * SPAWN_SIDES.length)]!;
+export function pickSpawnPosition(state: GameState): { x: number; y: number } {
+  const layout = state.ship.layout;
+  const gunDirY = layout === "2top-1bot" ? 1 : -1;
+  const mx = state.ship.driverMoveX;
+  const my = state.ship.driverMoveY;
+  const travelMag = Math.min(1, Math.hypot(mx, my));
+  const biasX = mx;
+  const biasY = my + gunDirY * SPAWN_GUN_BIAS_IDLE * (1 - travelMag);
+  const biasMag = Math.hypot(biasX, biasY);
+  const centerAngle =
+    biasMag < 0.01 ? Math.random() * Math.PI * 2 : Math.atan2(biasY, biasX);
+  const strength = Math.min(1, biasMag);
+  const arcHalf = Math.PI * (1 - strength * SPAWN_ARC_NARROWING);
+  const theta = centerAngle + (Math.random() * 2 - 1) * arcHalf;
+  const shipX = state.ship.position.x;
+  const shipY = state.ship.position.y;
+  return {
+    x: shipX + Math.cos(theta) * SPAWN_RING_HALF_W,
+    y: shipY + Math.sin(theta) * SPAWN_RING_HALF_H,
+  };
 }
 
-function spawnPosForSide(side: SpawnSide): { x: number; y: number } {
-  switch (side) {
-    case "top":
-      return {
-        x: (Math.random() * 2 - 1) * WORLD_HALF_W,
-        y: WORLD_HALF_H + SPAWN_MARGIN,
-      };
-    case "bottom":
-      return {
-        x: (Math.random() * 2 - 1) * WORLD_HALF_W,
-        y: -WORLD_HALF_H - SPAWN_MARGIN,
-      };
-    case "left":
-      return {
-        x: -WORLD_HALF_W - SPAWN_MARGIN,
-        y: (Math.random() * 2 - 1) * WORLD_HALF_H,
-      };
-    case "right":
-      return {
-        x: WORLD_HALF_W + SPAWN_MARGIN,
-        y: (Math.random() * 2 - 1) * WORLD_HALF_H,
-      };
-  }
-}
-
-function makeEnemy(state: GameState, kind: EnemyKind): Enemy {
-  const { x, y } = spawnPosForSide(pickSpawnSide());
-  const e = new Enemy();
-  e.id = nextId(state, kind);
+function applyKindDefaults(e: Enemy, kind: EnemyKind): void {
   e.kind = kind;
-  e.position = new Vec2(x, y);
-
+  e.velocity.x = 0;
+  e.velocity.y = 0;
+  e.contactCooldownSec = 0;
+  e.windupSec = 0;
   switch (kind) {
     case "fighter":
       e.hp = FIGHTER_HP;
       e.maxHp = FIGHTER_HP;
       e.fireCooldownSec = FIGHTER_FIRE_COOLDOWN_SEC;
       e.size = FIGHTER_SIZE;
+      e.contactDamage = 0;
+      e.subCooldownSec = 0;
+      e.phase = 0;
       break;
     case "swarmer":
       e.hp = SWARMER_HP;
@@ -107,36 +99,62 @@ function makeEnemy(state: GameState, kind: EnemyKind): Enemy {
       e.fireCooldownSec = 999;
       e.size = SWARMER_SIZE;
       e.contactDamage = SWARMER_CONTACT_DAMAGE;
+      e.subCooldownSec = 0;
+      e.phase = 0;
       break;
     case "tank":
       e.hp = TANK_HP;
       e.maxHp = TANK_HP;
       e.fireCooldownSec = TANK_FIRE_COOLDOWN_SEC;
       e.size = TANK_SIZE;
+      e.contactDamage = 0;
+      e.subCooldownSec = 0;
+      e.phase = 0;
       break;
     case "sniper":
       e.hp = SNIPER_HP;
       e.maxHp = SNIPER_HP;
       e.fireCooldownSec = SNIPER_FIRE_COOLDOWN_SEC;
       e.size = SNIPER_SIZE;
+      e.contactDamage = 0;
+      e.subCooldownSec = 0;
+      e.phase = 0;
       break;
     case "miniboss":
       e.hp = MINIBOSS_HP;
       e.maxHp = MINIBOSS_HP;
       e.fireCooldownSec = MINIBOSS_FIRE_COOLDOWN_SEC;
       e.size = MINIBOSS_SIZE;
+      e.contactDamage = 0;
       e.subCooldownSec = 4;
+      e.phase = 0;
       break;
     case "boss":
       e.hp = BOSS_HP;
       e.maxHp = BOSS_HP;
       e.fireCooldownSec = BOSS_FIRE_COOLDOWN_SEC;
       e.size = BOSS_SIZE;
-      e.phase = 1;
+      e.contactDamage = 0;
       e.subCooldownSec = 5;
+      e.phase = 1;
       break;
   }
+}
+
+function makeEnemy(state: GameState, kind: EnemyKind): Enemy {
+  const { x, y } = pickSpawnPosition(state);
+  const e = new Enemy();
+  e.id = nextId(state, kind);
+  e.position = new Vec2(x, y);
+  applyKindDefaults(e, kind);
   return e;
+}
+
+export function recycleEnemy(state: GameState, e: Enemy): void {
+  const { x, y } = pickSpawnPosition(state);
+  e.position.x = x;
+  e.position.y = y;
+  applyKindDefaults(e, e.kind as EnemyKind);
 }
 
 function spawnInterval(tSec: number): number {

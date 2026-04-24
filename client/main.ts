@@ -156,7 +156,6 @@ function enterGame(): void {
       handles.render(prev, next, alpha);
       currentHud?.update(next);
     },
-    onStarfieldUpdate: handles.updateStarfield,
   });
 }
 

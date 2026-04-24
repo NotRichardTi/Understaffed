@@ -1,6 +1,7 @@
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { Color3 } from "@babylonjs/core/Maths/math.color";
+import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import type { Scene } from "@babylonjs/core/scene";
 
@@ -8,7 +9,7 @@ interface LayerConfig {
   name: string;
   z: number;
   count: number;
-  speed: number;
+  parallaxFactor: number;
   size: number;
   color: Color3;
 }
@@ -24,8 +25,8 @@ interface Layer {
 }
 
 export interface Starfield {
-  update: (dtSec: number) => void;
   resize: (viewW: number, viewH: number) => void;
+  setCameraOffset: (x: number, y: number) => void;
   dispose: () => void;
 }
 
@@ -39,18 +40,9 @@ function makeLayerMaterial(scene: Scene, cfg: LayerConfig): StandardMaterial {
   return mat;
 }
 
-function placeStar(
-  mesh: Mesh,
-  viewW: number,
-  viewH: number,
-  atLeftEdge: boolean,
-) {
-  const halfW = viewW / 2;
-  const halfH = viewH / 2;
-  mesh.position.x = atLeftEdge
-    ? halfW + Math.random() * (viewW * 0.25)
-    : -halfW + Math.random() * viewW;
-  mesh.position.y = -halfH + Math.random() * viewH;
+function placeStar(mesh: Mesh, viewW: number, viewH: number): void {
+  mesh.position.x = -viewW / 2 + Math.random() * viewW;
+  mesh.position.y = -viewH / 2 + Math.random() * viewH;
 }
 
 function buildLayer(
@@ -58,6 +50,7 @@ function buildLayer(
   cfg: LayerConfig,
   viewW: number,
   viewH: number,
+  parent: TransformNode,
 ): Layer {
   const material = makeLayerMaterial(scene, cfg);
   const stars: Star[] = [];
@@ -68,11 +61,12 @@ function buildLayer(
       scene,
     );
     mesh.material = material;
+    mesh.parent = parent;
     mesh.position.z = cfg.z;
     mesh.renderingGroupId = 0;
     mesh.isPickable = false;
-    mesh.doNotSyncBoundingInfo = true;
-    placeStar(mesh, viewW, viewH, false);
+    mesh.alwaysSelectAsActiveMesh = true;
+    placeStar(mesh, viewW, viewH);
     stars.push({ mesh });
   }
   return { config: cfg, material, stars };
@@ -85,28 +79,29 @@ export function createStarfield(
 ): Starfield {
   let currentW = viewW;
   let currentH = viewH;
+  let prevOffsetX: number | null = null;
+  let prevOffsetY = 0;
+
+  const root = new TransformNode("starfield-root", scene);
 
   const configs: LayerConfig[] = [
-    { name: "stars-far", z: 15, count: 60, speed: 20, size: 2, color: new Color3(0.55, 0.6, 0.75) },
-    { name: "stars-mid", z: 10, count: 90, speed: 55, size: 3, color: new Color3(0.8, 0.85, 0.95) },
-    { name: "stars-near", z: 5, count: 40, speed: 120, size: 4, color: new Color3(1, 1, 1) },
+    { name: "stars-far", z: 15, count: 60, parallaxFactor: 0.15, size: 2, color: new Color3(0.55, 0.6, 0.75) },
+    { name: "stars-mid", z: 10, count: 90, parallaxFactor: 0.4, size: 3, color: new Color3(0.8, 0.85, 0.95) },
+    { name: "stars-near", z: 5, count: 40, parallaxFactor: 0.85, size: 4, color: new Color3(1, 1, 1) },
   ];
 
-  const layers: Layer[] = configs.map((cfg) => buildLayer(scene, cfg, currentW, currentH));
+  const layers: Layer[] = configs.map((cfg) => buildLayer(scene, cfg, currentW, currentH, root));
+
+  function wrapStar(mesh: Mesh): void {
+    const halfW = currentW / 2;
+    const halfH = currentH / 2;
+    if (mesh.position.x < -halfW) mesh.position.x += currentW;
+    else if (mesh.position.x > halfW) mesh.position.x -= currentW;
+    if (mesh.position.y < -halfH) mesh.position.y += currentH;
+    else if (mesh.position.y > halfH) mesh.position.y -= currentH;
+  }
 
   return {
-    update: (dtSec: number) => {
-      for (const layer of layers) {
-        const dx = layer.config.speed * dtSec;
-        const leftEdge = -currentW / 2 - layer.config.size;
-        for (const s of layer.stars) {
-          s.mesh.position.x -= dx;
-          if (s.mesh.position.x < leftEdge) {
-            placeStar(s.mesh, currentW, currentH, true);
-          }
-        }
-      }
-    },
     resize: (w: number, h: number) => {
       currentW = w;
       currentH = h;
@@ -115,8 +110,32 @@ export function createStarfield(
           const halfW = w / 2;
           const halfH = h / 2;
           if (Math.abs(s.mesh.position.x) > halfW || Math.abs(s.mesh.position.y) > halfH) {
-            placeStar(s.mesh, w, h, false);
+            placeStar(s.mesh, w, h);
           }
+        }
+      }
+    },
+    setCameraOffset: (x: number, y: number) => {
+      root.position.x = x;
+      root.position.y = y;
+      if (prevOffsetX === null) {
+        prevOffsetX = x;
+        prevOffsetY = y;
+        return;
+      }
+      const dx = x - prevOffsetX;
+      const dy = y - prevOffsetY;
+      prevOffsetX = x;
+      prevOffsetY = y;
+      if (dx === 0 && dy === 0) return;
+      for (const layer of layers) {
+        const f = layer.config.parallaxFactor;
+        const sx = -dx * f;
+        const sy = -dy * f;
+        for (const s of layer.stars) {
+          s.mesh.position.x += sx;
+          s.mesh.position.y += sy;
+          wrapStar(s.mesh);
         }
       }
     },
@@ -125,6 +144,7 @@ export function createStarfield(
         for (const s of layer.stars) s.mesh.dispose();
         layer.material.dispose();
       }
+      root.dispose();
     },
   };
 }

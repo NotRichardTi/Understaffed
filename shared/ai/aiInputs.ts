@@ -3,8 +3,6 @@ import { emptyInputFrame, type InputFrame } from "../state/inputFrame.js";
 import type { Enemy } from "../state/entities.js";
 import {
   SHIELD_START,
-  SHIP_POS_X,
-  SHIP_POS_Y,
   SHIP_HALF_H,
   SHIP_HALF_W,
 } from "../content/tuning.js";
@@ -69,10 +67,21 @@ const IMMINENT_DANGER_THRESHOLD = 1.4;
 const COVERAGE_SCAN_RADIUS = 700;
 const COVERAGE_MARGIN = 90;
 const COVERAGE_FORCE_CAP = 0.55;
+const LIGHT_DODGE_SUPPRESSION = 0.7;
+const COVERAGE_AGGRESSION_BOOST = 1.0;
+const HEAVY_PROJECTILE_DAMAGE = 20;
 
 function fillDriverFrame(f: InputFrame, state: GameState): void {
   const shipX = state.ship.position.x;
   const shipY = state.ship.position.y;
+
+  const inShieldCooldown = state.ship.shieldCooldownUntilTick !== NO_TICK;
+  const shieldReady = inShieldCooldown
+    ? 0
+    : state.ship.shield / Math.max(1, state.upgrades.shieldMax);
+  const hullFactor = state.ship.hull / Math.max(1, state.upgrades.hullMax);
+  const aggression = Math.max(0, Math.min(1, shieldReady * hullFactor));
+  const lightDodgeScale = 1 - aggression * LIGHT_DODGE_SUPPRESSION;
 
   let forceX = 0;
   let forceY = 0;
@@ -105,7 +114,13 @@ function fillDriverFrame(f: InputFrame, state: GameState): void {
 
     const urgency = Math.max(0.2, 1 - caDist / (hitRadius + 40));
     const timeFactor = Math.max(0.25, 1 - t / DODGE_LOOKAHEAD_SEC);
-    const w = urgency * timeFactor * 3.0;
+    let w = urgency * timeFactor * 3.0;
+
+    const isHeavy = (p.aoeRadius ?? 0) > 0 || p.damage >= HEAVY_PROJECTILE_DAMAGE;
+    const isUnavoidable = caDist < 4;
+    if (!isHeavy && !isUnavoidable) {
+      w *= lightDodgeScale;
+    }
 
     if (caDist < 4) {
       const perpX = -vy / speed;
@@ -187,13 +202,11 @@ function fillDriverFrame(f: InputFrame, state: GameState): void {
     if (weight > 0) {
       const avgEnemyY = sumY / weight;
       const desiredShipY = topActive ? avgEnemyY - COVERAGE_MARGIN : avgEnemyY + COVERAGE_MARGIN;
-      const coverageForce = Math.tanh((desiredShipY - shipY) / 140) * COVERAGE_FORCE_CAP;
+      const coverageCap = COVERAGE_FORCE_CAP * (1 + aggression * COVERAGE_AGGRESSION_BOOST);
+      const coverageForce = Math.tanh((desiredShipY - shipY) / 140) * coverageCap;
       forceY += coverageForce;
     }
   }
-
-  forceX += (SHIP_POS_X - shipX) * 0.002;
-  forceY += (SHIP_POS_Y - shipY) * 0.002;
 
   const mag = Math.hypot(forceX, forceY);
   if (mag < 0.08) return;

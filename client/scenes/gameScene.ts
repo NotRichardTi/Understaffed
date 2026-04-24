@@ -11,7 +11,6 @@ import type { Enemy, Projectile, XpOrb } from "@shared/state/entities.js";
 export interface GameSceneHandles {
   scene: Scene;
   render: (prev: GameState, next: GameState, alpha: number) => void;
-  updateStarfield: (dtSec: number) => void;
 }
 
 const COLOR_FIGHTER = new Color3(0.85, 0.25, 0.3);
@@ -97,10 +96,14 @@ export function createGameScene(engine: Engine, initialState: GameState): GameSc
     scene,
     render: (prev, next, alpha) => {
       ship.render(prev, next, alpha);
+      const shipX = ship.root.position.x;
+      const shipY = ship.root.position.y;
+      ortho.camera.position.x = shipX;
+      ortho.camera.position.y = shipY;
+      starfield.setCameraOffset(shipX, shipY);
       enemyPool.sync(next.enemies);
       projectilePool.sync(next.projectiles);
       xpOrbPool.sync(next.xpOrbs);
     },
-    updateStarfield: (dtSec) => starfield.update(dtSec),
   };
 }

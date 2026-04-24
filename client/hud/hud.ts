@@ -12,7 +12,7 @@ const STYLE = `
   position: fixed;
   inset: 0;
   pointer-events: none;
-  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-family: "VT323", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   color: #eaf0ff;
   text-shadow: 0 0 4px rgba(0,0,0,0.8);
 }
@@ -559,11 +559,19 @@ export function createHud(cb: HudCallbacks = {}): Hud {
       if (mode === "cmd-pick-dest" && selectedBot) {
         const selBot = state.crew.find((c) => c.id === selectedBot);
         const botIdx = botIndexById.get(selectedBot) ?? 0;
+        const reservedByOthers = new Set<string>();
+        for (const c of state.crew) {
+          if (c.id !== selectedBot && c.pendingStationId !== NO_ID) {
+            reservedByOthers.add(c.pendingStationId);
+          }
+        }
         const avail =
           selBot && selBot.pendingStationId === NO_ID
             ? state.stations.filter(
                 (s) =>
-                  s.occupantCrewId === NO_ID && s.id !== selBot.currentStationId,
+                  s.occupantCrewId === NO_ID &&
+                  s.id !== selBot.currentStationId &&
+                  !reservedByOthers.has(s.id),
               )
             : [];
         setCmdDestinations(avail.map((s) => s.id));

@@ -27,7 +27,8 @@ export interface MpMenuActions {
 function makeUi(scene: Scene): AdvancedDynamicTexture {
   const t = AdvancedDynamicTexture.CreateFullscreenUI("MenuUI", true, scene);
   t.idealWidth = 1280;
-  t.renderAtIdealSize = true;
+  t.idealHeight = 800;
+  t.useSmallestIdeal = true;
   return t;
 }
 
@@ -47,7 +48,7 @@ function makeTitle(text: string, size = 48): TextBlock {
   t.color = "#e6edf3";
   t.fontSize = size;
   t.height = `${size + 24}px`;
-  t.fontFamily = "ui-monospace, monospace";
+  t.fontFamily = '"VT323", ui-monospace, monospace';
   return t;
 }
 
@@ -59,7 +60,7 @@ function makeButton(label: string, onClick: () => void, primary = false): Button
   b.thickness = 1;
   b.cornerRadius = 4;
   b.fontSize = 18;
-  b.fontFamily = "ui-monospace, monospace";
+  b.fontFamily = '"VT323", ui-monospace, monospace';
   b.onPointerUpObservable.add(() => onClick());
   b.onPointerEnterObservable.add(() => {
     b.background = primary ? "#3a7bb3" : "#2a3340";
@@ -76,7 +77,7 @@ function makeHint(text: string): TextBlock {
   t.color = "#8892a0";
   t.fontSize = 14;
   t.height = "22px";
-  t.fontFamily = "ui-monospace, monospace";
+  t.fontFamily = '"VT323", ui-monospace, monospace';
   return t;
 }
 
@@ -117,7 +118,7 @@ export function createMpMenu(scene: Scene, actions: MpMenuActions): ScreenHandle
   nameInput.background = "#1f2631";
   nameInput.focusedBackground = "#2a3340";
   nameInput.fontSize = 18;
-  nameInput.fontFamily = "ui-monospace, monospace";
+  nameInput.fontFamily = '"VT323", ui-monospace, monospace';
   nameInput.text = "Player";
   panel.addControl(nameInput);
 
@@ -129,7 +130,7 @@ export function createMpMenu(scene: Scene, actions: MpMenuActions): ScreenHandle
   codeInput.background = "#1f2631";
   codeInput.focusedBackground = "#2a3340";
   codeInput.fontSize = 18;
-  codeInput.fontFamily = "ui-monospace, monospace";
+  codeInput.fontFamily = '"VT323", ui-monospace, monospace';
   codeInput.text = "";
   codeInput.placeholderText = "ABCD";
   panel.addControl(codeInput);

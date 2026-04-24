@@ -12,6 +12,9 @@ export const STATION_IDS = [
   "station-repair",
 ] as const;
 
+export const GUN_STATION_IDS = ["station-gun-1", "station-gun-2", "station-gun-3"] as const;
+export const GUNNER_PICK_ID = "station-gunner";
+
 function firstFreeCharIdx(state: RoomState): number {
   const taken = new Set<number>();
   state.players.forEach((p) => taken.add(p.charIdx));
@@ -85,9 +88,19 @@ export function handlePickStation(state: RoomState, sessionId: string, stationId
   if (state.phase !== "lobby") return;
   const player = state.players.get(sessionId);
   if (!player) return;
-  if (!STATION_IDS.includes(stationId as typeof STATION_IDS[number])) return;
-  if (stationTaken(state, stationId, sessionId)) return;
-  player.stationId = stationId;
+
+  let resolvedId: string;
+  if (stationId === GUNNER_PICK_ID) {
+    const free = GUN_STATION_IDS.find((id) => !stationTaken(state, id, sessionId));
+    if (!free) return;
+    resolvedId = free;
+  } else {
+    if (!STATION_IDS.includes(stationId as typeof STATION_IDS[number])) return;
+    if (stationTaken(state, stationId, sessionId)) return;
+    resolvedId = stationId;
+  }
+
+  player.stationId = resolvedId;
   player.ready = false;
 }
 

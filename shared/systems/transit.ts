@@ -17,6 +17,10 @@ function beginTransit(state: GameState, crew: Crew, target: Station): void {
   if (crew.pendingStationId !== NO_ID) return;
   if (crew.currentStationId === target.id) return;
 
+  for (const c of state.crew) {
+    if (c.id !== crew.id && c.pendingStationId === target.id) return;
+  }
+
   const arriveTick = state.tick + Math.ceil(TRANSIT_DURATION_SEC * TICK_HZ);
 
   if (target.occupantCrewId !== NO_ID) {

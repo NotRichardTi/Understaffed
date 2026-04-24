@@ -9,7 +9,7 @@ import {
 } from "@babylonjs/gui";
 import type { NetClient } from "../net/NetClient.js";
 import type { LobbyPlayer, RoomState } from "@shared/net/roomState.js";
-import { STATION_IDS } from "@shared/net/lobbyHandlers.js";
+import { GUNNER_PICK_ID } from "@shared/net/lobbyHandlers.js";
 
 export interface LobbyHandle {
   dispose: () => void;
@@ -24,13 +24,18 @@ export interface LobbyActions {
 const CHAR_COLORS = ["#ffd966", "#66d9ff", "#7fff7f", "#ff8ee8"];
 const CHAR_NAMES = ["Yellow", "Cyan", "Green", "Pink"];
 
-const STATION_META: Record<string, { label: string; group: "gun" | "driver" | "repair" }> = {
-  "station-gun-1": { label: "Gun 1", group: "gun" },
-  "station-gun-2": { label: "Gun 2", group: "gun" },
-  "station-gun-3": { label: "Gun 3", group: "gun" },
-  "station-driver": { label: "Driver", group: "driver" },
-  "station-repair": { label: "Repair", group: "repair" },
-};
+const ROLE_BUTTONS = [
+  { id: GUNNER_PICK_ID, label: "Gunner", role: "gunner" as const },
+  { id: "station-driver", label: "Driver", role: "driver" as const },
+  { id: "station-repair", label: "Repair", role: "repair" as const },
+];
+
+function stationDisplayLabel(stationId: string): string {
+  if (stationId.startsWith("station-gun-")) return "Gunner";
+  if (stationId === "station-driver") return "Driver";
+  if (stationId === "station-repair") return "Repair";
+  return "?";
+}
 
 function makeTitle(text: string, size = 32): TextBlock {
   const t = new TextBlock();
@@ -38,7 +43,7 @@ function makeTitle(text: string, size = 32): TextBlock {
   t.color = "#e6edf3";
   t.fontSize = size;
   t.height = `${size + 16}px`;
-  t.fontFamily = "ui-monospace, monospace";
+  t.fontFamily = '"VT323", ui-monospace, monospace';
   return t;
 }
 
@@ -48,7 +53,7 @@ function makeText(text: string, size = 14, color = "#8892a0"): TextBlock {
   t.color = color;
   t.fontSize = size;
   t.height = `${size + 8}px`;
-  t.fontFamily = "ui-monospace, monospace";
+  t.fontFamily = '"VT323", ui-monospace, monospace';
   return t;
 }
 
@@ -63,7 +68,8 @@ export function createLobby(scene: Scene, net: NetClient, actions: LobbyActions)
   const isSP = net.isSinglePlayer;
   const t = AdvancedDynamicTexture.CreateFullscreenUI("LobbyUI", true, scene);
   t.idealWidth = 1280;
-  t.renderAtIdealSize = true;
+  t.idealHeight = 800;
+  t.useSmallestIdeal = true;
 
   const root = new StackPanel("lobbyRoot");
   root.isVertical = true;
@@ -90,7 +96,7 @@ export function createLobby(scene: Scene, net: NetClient, actions: LobbyActions)
   copyBtn.thickness = 1;
   copyBtn.cornerRadius = 4;
   copyBtn.fontSize = 13;
-  copyBtn.fontFamily = "ui-monospace, monospace";
+  copyBtn.fontFamily = '"VT323", ui-monospace, monospace';
   let copyResetTimer: ReturnType<typeof setTimeout> | null = null;
   copyBtn.onPointerUpObservable.add(() => {
     const code = net.state.lobbyCode;
@@ -139,7 +145,7 @@ export function createLobby(scene: Scene, net: NetClient, actions: LobbyActions)
     b.thickness = 0;
     b.cornerRadius = 6;
     b.fontSize = 16;
-    b.fontFamily = "ui-monospace, monospace";
+    b.fontFamily = '"VT323", ui-monospace, monospace';
     b.onPointerUpObservable.add(() => {
       net.send("pickCharacter", { charIdx: i });
     });
@@ -150,35 +156,28 @@ export function createLobby(scene: Scene, net: NetClient, actions: LobbyActions)
   root.addControl(makeSpacer(8));
 
   root.addControl(makeText("STATION", 14));
-  const stationRowA = new StackPanel("stationRowA");
-  stationRowA.isVertical = false;
-  stationRowA.height = "52px";
-  stationRowA.spacing = 8;
-  const stationRowB = new StackPanel("stationRowB");
-  stationRowB.isVertical = false;
-  stationRowB.height = "52px";
-  stationRowB.spacing = 8;
+  const stationRow = new StackPanel("stationRow");
+  stationRow.isVertical = false;
+  stationRow.height = "52px";
+  stationRow.spacing = 10;
   const stationButtons: Record<string, Button> = {};
-  for (let i = 0; i < STATION_IDS.length; i++) {
-    const sid = STATION_IDS[i]!;
-    const meta = STATION_META[sid]!;
-    const b = Button.CreateSimpleButton(`station-${sid}`, meta.label);
-    b.width = "140px";
+  for (const entry of ROLE_BUTTONS) {
+    const b = Button.CreateSimpleButton(`station-${entry.id}`, entry.label);
+    b.width = "180px";
     b.height = "48px";
     b.color = "#e6edf3";
     b.background = "#1f2631";
     b.thickness = 1;
     b.cornerRadius = 4;
     b.fontSize = 16;
-    b.fontFamily = "ui-monospace, monospace";
+    b.fontFamily = '"VT323", ui-monospace, monospace';
     b.onPointerUpObservable.add(() => {
-      net.send("pickStation", { stationId: sid });
+      net.send("pickStation", { stationId: entry.id });
     });
-    stationButtons[sid] = b;
-    (i < 3 ? stationRowA : stationRowB).addControl(b);
+    stationButtons[entry.id] = b;
+    stationRow.addControl(b);
   }
-  root.addControl(stationRowA);
-  root.addControl(stationRowB);
+  root.addControl(stationRow);
   root.addControl(makeSpacer(12));
 
   root.addControl(makeText("PLAYERS", 14));
@@ -205,7 +204,7 @@ export function createLobby(scene: Scene, net: NetClient, actions: LobbyActions)
   readyBtn.thickness = 1;
   readyBtn.cornerRadius = 4;
   readyBtn.fontSize = 18;
-  readyBtn.fontFamily = "ui-monospace, monospace";
+  readyBtn.fontFamily = '"VT323", ui-monospace, monospace';
   readyBtn.onPointerUpObservable.add(() => {
     net.send("toggleReady");
   });
@@ -219,7 +218,7 @@ export function createLobby(scene: Scene, net: NetClient, actions: LobbyActions)
   aiFillBtn.thickness = 1;
   aiFillBtn.cornerRadius = 4;
   aiFillBtn.fontSize = 16;
-  aiFillBtn.fontFamily = "ui-monospace, monospace";
+  aiFillBtn.fontFamily = '"VT323", ui-monospace, monospace';
   aiFillBtn.onPointerUpObservable.add(() => {
     net.send("toggleAiFill");
   });
@@ -233,7 +232,7 @@ export function createLobby(scene: Scene, net: NetClient, actions: LobbyActions)
   startBtn.thickness = 0;
   startBtn.cornerRadius = 4;
   startBtn.fontSize = 18;
-  startBtn.fontFamily = "ui-monospace, monospace";
+  startBtn.fontFamily = '"VT323", ui-monospace, monospace';
   startBtn.onPointerUpObservable.add(() => {
     actions.onStartGame();
   });
@@ -247,7 +246,7 @@ export function createLobby(scene: Scene, net: NetClient, actions: LobbyActions)
   leaveBtn.thickness = 0;
   leaveBtn.cornerRadius = 4;
   leaveBtn.fontSize = 16;
-  leaveBtn.fontFamily = "ui-monospace, monospace";
+  leaveBtn.fontFamily = '"VT323", ui-monospace, monospace';
   leaveBtn.onPointerUpObservable.add(() => {
     actions.onLeave();
   });
@@ -280,14 +279,31 @@ export function createLobby(scene: Scene, net: NetClient, actions: LobbyActions)
       b.isHitTestVisible = !(taken && !mine);
     }
 
-    for (const sid of STATION_IDS) {
-      const b = stationButtons[sid]!;
-      const taken = takenStations.has(sid);
-      const mine = me?.stationId === sid;
+    let gunCountTotal = 0;
+    state.players.forEach((p) => {
+      if (p.stationId.startsWith("station-gun-")) gunCountTotal++;
+    });
+    const myGun = me?.stationId.startsWith("station-gun-") ?? false;
+
+    for (const entry of ROLE_BUTTONS) {
+      const b = stationButtons[entry.id]!;
+      let mine: boolean;
+      let taken: boolean;
+      let label: string;
+      if (entry.role === "gunner") {
+        mine = myGun;
+        taken = gunCountTotal >= 3 && !mine;
+        label = `Gunner ${gunCountTotal}/3`;
+      } else {
+        mine = me?.stationId === entry.id;
+        taken = takenStations.has(entry.id);
+        label = entry.label;
+      }
+      b.textBlock!.text = label;
       b.background = mine ? "#2b5d8a" : "#1f2631";
       b.thickness = mine ? 2 : 1;
-      b.alpha = taken && !mine ? 0.3 : 1;
-      b.isHitTestVisible = !(taken && !mine);
+      b.alpha = taken ? 0.3 : 1;
+      b.isHitTestVisible = !taken;
     }
 
     playerList.clearControls();
@@ -306,7 +322,7 @@ export function createLobby(scene: Scene, net: NetClient, actions: LobbyActions)
       name.width = "200px";
       name.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
       row.addControl(name);
-      const station = makeText(p.stationId ? STATION_META[p.stationId]?.label ?? "?" : "—", 14, "#8892a0");
+      const station = makeText(p.stationId ? stationDisplayLabel(p.stationId) : "—", 14, "#8892a0");
       station.width = "120px";
       station.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
       row.addControl(station);

@@ -27,7 +27,7 @@ const engine = new Engine(canvas, true, {
   preserveDrawingBuffer: false,
   stencil: false,
   antialias: true,
-});
+}, true);
 
 attachKeyboard(window);
 

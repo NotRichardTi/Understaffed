@@ -3,20 +3,8 @@ import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import type { Scene } from "@babylonjs/core/scene";
 import { createPlaceholderSprite, type PlaceholderHandle } from "./placeholderSprite.js";
 import type { GameState, Station } from "@shared/state/gameState.js";
-import {
-  GUN_BARREL_LEN,
-  GUN_BASE_OFFSET_Y,
-} from "@shared/content/tuning.js";
-
-const SHIP_W = 256;
-const SHIP_H = 128;
-const GLASS_W = 34;
-const GLASS_H = 34;
-const CREW_BODY_W = 10;
-const CREW_BODY_H = 14;
-const CREW_HEAD_SIZE = 8;
-const GUN_BASE_SIZE = 22;
-const BARREL_H = 8;
+import { getLayout, gunOutward } from "@shared/content/layouts/index.js";
+import type { GunSide } from "@shared/content/layouts/index.js";
 
 const COLOR_HULL = new Color3(0.35, 0.4, 0.55);
 const COLOR_GLASS_LIT = new Color3(0.22, 0.45, 0.75);
@@ -71,12 +59,15 @@ function headColor(base: Color3): Color3 {
 }
 
 export function createShip(scene: Scene, initialState: GameState): ShipHandles {
+  const layout = getLayout(initialState.ship.layout);
+  const v = layout.visuals;
+
   const root = new TransformNode("ship-root", scene);
 
   const hull = createPlaceholderSprite(scene, {
     name: "ship-hull",
-    w: SHIP_W,
-    h: SHIP_H,
+    w: layout.hull.visualW,
+    h: layout.hull.visualH,
     color: COLOR_HULL,
     z: 0,
     renderingGroupId: 1,
@@ -88,8 +79,8 @@ export function createShip(scene: Scene, initialState: GameState): ShipHandles {
   for (const station of initialState.stations) {
     const glass = createPlaceholderSprite(scene, {
       name: `glass-${station.id}`,
-      w: GLASS_W,
-      h: GLASS_H,
+      w: v.glassSize,
+      h: v.glassSize,
       color: COLOR_GLASS_DIM,
       z: -0.1,
       parent: hull.mesh,
@@ -102,30 +93,32 @@ export function createShip(scene: Scene, initialState: GameState): ShipHandles {
     if (station.kind === "gun") {
       const gunBase = createPlaceholderSprite(scene, {
         name: `gunbase-${station.id}`,
-        w: GUN_BASE_SIZE,
-        h: GUN_BASE_SIZE,
+        w: v.gunBaseSize,
+        h: v.gunBaseSize,
         color: COLOR_GUN_BASE,
         z: -0.2,
         parent: hull.mesh,
         renderingGroupId: 2,
       });
-      const offsetY = station.gunSide === "top" ? GUN_BASE_OFFSET_Y : -GUN_BASE_OFFSET_Y;
-      gunBase.setPosition(station.hardpoint.x, station.hardpoint.y + offsetY);
+      const out = gunOutward(station.gunSide as GunSide);
+      const offsetX = out.x * v.gunBaseOffset;
+      const offsetY = out.y * v.gunBaseOffset;
+      gunBase.setPosition(station.hardpoint.x + offsetX, station.hardpoint.y + offsetY);
 
       const gunPivot = new TransformNode(`gunpivot-${station.id}`, scene);
       gunPivot.parent = hull.mesh;
-      gunPivot.position.set(station.hardpoint.x, station.hardpoint.y + offsetY, -0.25);
+      gunPivot.position.set(station.hardpoint.x + offsetX, station.hardpoint.y + offsetY, -0.25);
 
       const barrel = createPlaceholderSprite(scene, {
         name: `barrel-${station.id}`,
-        w: GUN_BARREL_LEN,
-        h: BARREL_H,
+        w: v.gunBarrelLen,
+        h: v.gunBarrelH,
         color: COLOR_BARREL,
         z: 0,
         renderingGroupId: 2,
       });
       barrel.mesh.parent = gunPivot;
-      barrel.mesh.position.set(GUN_BARREL_LEN / 2, 0, 0);
+      barrel.mesh.position.set(v.gunBarrelLen / 2, 0, 0);
 
       visual.gunBase = gunBase;
       visual.gunPivot = gunPivot;
@@ -142,25 +135,25 @@ export function createShip(scene: Scene, initialState: GameState): ShipHandles {
     const baseColor = crewColor(crew.id);
     const body = createPlaceholderSprite(scene, {
       name: `crewbody-${crew.id}`,
-      w: CREW_BODY_W,
-      h: CREW_BODY_H,
+      w: v.crewBodyW,
+      h: v.crewBodyH,
       color: baseColor,
       z: -0.32,
       renderingGroupId: 2,
     });
     body.mesh.parent = avatarRoot;
-    body.mesh.position.set(0, -CREW_HEAD_SIZE / 2, -0.32);
+    body.mesh.position.set(0, -v.crewHeadSize / 2, -0.32);
 
     const head = createPlaceholderSprite(scene, {
       name: `crewhead-${crew.id}`,
-      w: CREW_HEAD_SIZE,
-      h: CREW_HEAD_SIZE,
+      w: v.crewHeadSize,
+      h: v.crewHeadSize,
       color: headColor(baseColor),
       z: -0.34,
       renderingGroupId: 2,
     });
     head.mesh.parent = avatarRoot;
-    head.mesh.position.set(0, CREW_BODY_H / 2 - 1, -0.34);
+    head.mesh.position.set(0, v.crewBodyH / 2 - 1, -0.34);
 
     const initialStation = initialState.stations.find(
       (s) => s.id === crew.currentStationId,

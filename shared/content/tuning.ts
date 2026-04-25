@@ -3,8 +3,6 @@ export const TICK_DT_SEC = 1 / TICK_HZ;
 
 export const SHIP_POS_X = 0;
 export const SHIP_POS_Y = 0;
-export const SHIP_HALF_W = 128;
-export const SHIP_HALF_H = 64;
 
 export const SPAWN_RING_HALF_W = 720;
 export const SPAWN_RING_HALF_H = 440;
@@ -23,9 +21,6 @@ export const SPAWN_ARC_NARROWING = 0.5;
 export const HULL_START = 100;
 export const SHIELD_START = 100;
 
-export const GUN_TOP_OFFSET_Y = 70;
-export const GUN_BARREL_LEN = 38;
-export const GUN_BASE_OFFSET_Y = 24;
 export const GUN_ROTATE_SPEED_RAD_PER_SEC = 2.4;
 export const GUN_FIRE_COOLDOWN_SEC = 1 / 3;
 
@@ -115,13 +110,3 @@ export function xpThresholdForLevel(level: number): number {
 }
 
 export const UPGRADE_CHOICES_PER_LEVEL = 3;
-
-export const STATION_OFFSET_DRIVER_X = -70;
-export const STATION_OFFSET_DRIVER_Y = 0;
-export const STATION_OFFSET_REPAIR_X = 60;
-export const STATION_OFFSET_REPAIR_Y = 0;
-export const GUN_OFFSET_TOP_Y = 60;
-export const GUN_OFFSET_BOT_Y = -60;
-export const GUN_OFFSET_X_LEFT = -30;
-export const GUN_OFFSET_X_CENTER = 10;
-export const GUN_OFFSET_X_RIGHT = 40;

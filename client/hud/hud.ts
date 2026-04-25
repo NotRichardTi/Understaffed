@@ -361,23 +361,31 @@ const STATION_HOTKEYS: Record<string, string> = {
   "station-gun-1": "3",
   "station-gun-2": "4",
   "station-gun-3": "5",
+  "station-gun-4": "6",
 };
 
 function buildStationLabels(stations: Station[]): Record<string, string> {
   const labels: Record<string, string> = {};
-  const topGuns = stations.filter((s) => s.kind === "gun" && s.gunSide === "top");
-  const botGuns = stations.filter((s) => s.kind === "gun" && s.gunSide === "bottom");
+  const sideName: Record<string, string> = {
+    top: "TOP",
+    bottom: "BOTTOM",
+    left: "LEFT",
+    right: "RIGHT",
+  };
+  const sideGroups: Record<string, Station[]> = { top: [], bottom: [], left: [], right: [] };
+  for (const s of stations) {
+    if (s.kind === "gun" && s.gunSide in sideGroups) sideGroups[s.gunSide]!.push(s);
+  }
   for (const s of stations) {
     if (s.kind === "driver") {
       labels[s.id] = "DRIVER";
     } else if (s.kind === "repair") {
       labels[s.id] = "REPAIR";
-    } else if (s.gunSide === "top") {
-      const idx = topGuns.indexOf(s);
-      labels[s.id] = topGuns.length > 1 ? `TOP GUN ${idx + 1}` : "TOP GUN";
     } else {
-      const idx = botGuns.indexOf(s);
-      labels[s.id] = botGuns.length > 1 ? `BOTTOM GUN ${idx + 1}` : "BOTTOM GUN";
+      const group = sideGroups[s.gunSide] ?? [];
+      const name = sideName[s.gunSide] ?? "GUN";
+      const idx = group.indexOf(s);
+      labels[s.id] = group.length > 1 ? `${name} GUN ${idx + 1}` : `${name} GUN`;
     }
   }
   return labels;

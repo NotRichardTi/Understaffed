@@ -9,21 +9,18 @@ import {
   SHIELD_START,
   SHIP_POS_X,
   SHIP_POS_Y,
-  STATION_OFFSET_DRIVER_X,
-  STATION_OFFSET_DRIVER_Y,
-  STATION_OFFSET_REPAIR_X,
-  STATION_OFFSET_REPAIR_Y,
-  GUN_OFFSET_TOP_Y,
-  GUN_OFFSET_BOT_Y,
-  GUN_OFFSET_X_LEFT,
-  GUN_OFFSET_X_CENTER,
-  GUN_OFFSET_X_RIGHT,
   xpThresholdForLevel,
 } from "../content/tuning.js";
+import {
+  DEFAULT_LAYOUT_ID,
+  getLayout,
+  pickRandomLayoutId,
+  type ShipLayoutDef,
+} from "../content/layouts/index.js";
+import { gunDefaultAngle, type GunSide } from "../content/layouts/types.js";
 
 export type StationKind = "driver" | "repair" | "gun";
-export type GunSide = "top" | "bottom";
-export type ShipLayout = "2top-1bot" | "1top-2bot";
+export type { GunSide };
 export type GamePhase = "playing" | "levelup" | "gameover" | "victory";
 
 export const NO_ID = "";
@@ -52,7 +49,7 @@ export class Ship extends Schema {
   @type("number") hull: number = HULL_START;
   @type("number") shield: number = SHIELD_START;
   @type("number") shieldCooldownUntilTick: number = NO_TICK;
-  @type("string") layout: string = "2top-1bot";
+  @type("string") layout: string = DEFAULT_LAYOUT_ID;
   @type("number") driverMoveX: number = 0;
   @type("number") driverMoveY: number = 0;
 }
@@ -92,32 +89,25 @@ function makeGun(id: string, side: GunSide, x: number, y: number): Station {
   s.kind = "gun";
   s.gunSide = side;
   s.hardpoint = new Vec2(x, y);
-  s.aimAngle = side === "top" ? Math.PI / 2 : -Math.PI / 2;
+  s.aimAngle = gunDefaultAngle(side);
   s.fireCooldownSec = 0;
   return s;
 }
 
-function buildStations(layout: ShipLayout): Station[] {
+function buildStations(def: ShipLayoutDef): Station[] {
   const driver = new Station();
   driver.id = "station-driver";
   driver.kind = "driver";
-  driver.hardpoint = new Vec2(STATION_OFFSET_DRIVER_X, STATION_OFFSET_DRIVER_Y);
+  driver.hardpoint = new Vec2(def.stations.driver.x, def.stations.driver.y);
 
   const repair = new Station();
   repair.id = "station-repair";
   repair.kind = "repair";
-  repair.hardpoint = new Vec2(STATION_OFFSET_REPAIR_X, STATION_OFFSET_REPAIR_Y);
+  repair.hardpoint = new Vec2(def.stations.repair.x, def.stations.repair.y);
 
-  const guns: Station[] = [];
-  if (layout === "2top-1bot") {
-    guns.push(makeGun("station-gun-1", "top", GUN_OFFSET_X_LEFT, GUN_OFFSET_TOP_Y));
-    guns.push(makeGun("station-gun-2", "top", GUN_OFFSET_X_RIGHT, GUN_OFFSET_TOP_Y));
-    guns.push(makeGun("station-gun-3", "bottom", GUN_OFFSET_X_CENTER, GUN_OFFSET_BOT_Y));
-  } else {
-    guns.push(makeGun("station-gun-1", "top", GUN_OFFSET_X_CENTER, GUN_OFFSET_TOP_Y));
-    guns.push(makeGun("station-gun-2", "bottom", GUN_OFFSET_X_LEFT, GUN_OFFSET_BOT_Y));
-    guns.push(makeGun("station-gun-3", "bottom", GUN_OFFSET_X_RIGHT, GUN_OFFSET_BOT_Y));
-  }
+  const guns = def.stations.guns.map((g) =>
+    makeGun(g.id, g.side, g.x, g.y),
+  );
   return [driver, repair, ...guns];
 }
 
@@ -129,9 +119,10 @@ function makeCrew(id: string, isHuman: boolean, stationId: string): Crew {
   return c;
 }
 
-export function createInitialState(layout?: ShipLayout): GameState {
-  const chosenLayout: ShipLayout = layout ?? (Math.random() < 0.5 ? "2top-1bot" : "1top-2bot");
-  const stations = buildStations(chosenLayout);
+export function createInitialState(layoutId?: string): GameState {
+  const chosenId = layoutId ?? pickRandomLayoutId();
+  const def = getLayout(chosenId);
+  const stations = buildStations(def);
 
   const driverStation = stations.find((s) => s.kind === "driver")!;
   const repairStation = stations.find((s) => s.kind === "repair")!;
@@ -158,7 +149,7 @@ export function createInitialState(layout?: ShipLayout): GameState {
   s.ship.hull = HULL_START;
   s.ship.shield = SHIELD_START;
   s.ship.shieldCooldownUntilTick = NO_TICK;
-  s.ship.layout = chosenLayout;
+  s.ship.layout = def.id;
   s.ship.driverMoveX = 0;
   s.ship.driverMoveY = 0;
   s.stations.push(...stations);

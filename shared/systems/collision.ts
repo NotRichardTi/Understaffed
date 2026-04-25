@@ -1,12 +1,11 @@
 import { NO_TICK, Vec2, type GameState } from "../state/gameState.js";
 import { XpOrb, type EnemyKind } from "../state/entities.js";
 import {
-  SHIP_HALF_W,
-  SHIP_HALF_H,
   SHIELD_COOLDOWN_SEC,
   SWARMER_MELEE_COOLDOWN_SEC,
   TICK_HZ,
 } from "../content/tuning.js";
+import { getLayout } from "../content/layouts/index.js";
 import { nextId } from "./ids.js";
 
 const PUSHABLE_ENEMY_KINDS: Record<EnemyKind, boolean> = {
@@ -21,13 +20,14 @@ const PUSHABLE_ENEMY_KINDS: Record<EnemyKind, boolean> = {
 const ENEMY_PUSH_SHARE = 0.7;
 
 export function tickShipEnemyPush(state: GameState): void {
+  const hull = getLayout(state.ship.layout).hull;
   for (const enemy of state.enemies) {
     if (enemy.hp <= 0) continue;
     const ehalf = enemy.size / 2;
     const dx = enemy.position.x - state.ship.position.x;
     const dy = enemy.position.y - state.ship.position.y;
-    const overlapX = SHIP_HALF_W + ehalf - Math.abs(dx);
-    const overlapY = SHIP_HALF_H + ehalf - Math.abs(dy);
+    const overlapX = hull.halfW + ehalf - Math.abs(dx);
+    const overlapY = hull.halfH + ehalf - Math.abs(dy);
     if (overlapX <= 0 || overlapY <= 0) continue;
 
     let pushX = 0;
@@ -103,6 +103,7 @@ function orbsForEnemy(kind: string): number {
 export function tickCollisions(state: GameState): void {
   const shipX = state.ship.position.x;
   const shipY = state.ship.position.y;
+  const hull = getLayout(state.ship.layout).hull;
 
   for (const bullet of state.projectiles) {
     if (bullet.ttlSec <= 0) continue;
@@ -128,7 +129,7 @@ export function tickCollisions(state: GameState): void {
     } else {
       const hitShip = aabbOverlap(
         bullet.position.x, bullet.position.y, bhalf, bhalf,
-        shipX, shipY, SHIP_HALF_W, SHIP_HALF_H,
+        shipX, shipY, hull.halfW, hull.halfH,
       );
       if (hitShip) {
         if (bullet.aoeRadius) {
@@ -149,7 +150,7 @@ export function tickCollisions(state: GameState): void {
         const ehalf = enemy.size / 2;
         const touching = aabbOverlap(
           enemy.position.x, enemy.position.y, ehalf, ehalf,
-          shipX, shipY, SHIP_HALF_W, SHIP_HALF_H,
+          shipX, shipY, hull.halfW, hull.halfH,
         );
         if (touching && (enemy.contactCooldownSec ?? 0) <= 0) {
           applyDamageToShip(state, enemy.contactDamage);

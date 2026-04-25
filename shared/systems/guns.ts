@@ -2,8 +2,6 @@ import { NO_ID, Vec2, type GameState, type GunSide, type Station } from "../stat
 import type { InputFrame } from "../state/inputFrame.js";
 import { Projectile } from "../state/entities.js";
 import {
-  GUN_BARREL_LEN,
-  GUN_BASE_OFFSET_Y,
   GUN_FIRE_COOLDOWN_SEC,
   GUN_ROTATE_SPEED_RAD_PER_SEC,
   PLAYER_BULLET_SPEED,
@@ -11,6 +9,7 @@ import {
   PLAYER_BULLET_SIZE,
   PLAYER_BULLET_TTL_SEC,
 } from "../content/tuning.js";
+import { getLayout, gunDefaultAngle, gunOutward } from "../content/layouts/index.js";
 import { nextId } from "./ids.js";
 
 export function clampAimAngle(
@@ -22,16 +21,20 @@ export function clampAimAngle(
 ): number {
   if (Math.abs(aimX) < 0.01 && Math.abs(aimY) < 0.01) return prev;
   let target = Math.atan2(aimY, aimX);
-  if (side === "top") {
-    if (target < 0) target = target < -Math.PI / 2 ? Math.PI : 0;
-  } else {
-    if (target > 0) target = target > Math.PI / 2 ? -Math.PI : 0;
-  }
+  const out = gunDefaultAngle(side);
+  let rel = target - out;
+  while (rel >  Math.PI) rel -= 2 * Math.PI;
+  while (rel < -Math.PI) rel += 2 * Math.PI;
+  if (rel >  Math.PI / 2) rel =  Math.PI / 2;
+  if (rel < -Math.PI / 2) rel = -Math.PI / 2;
+  target = out + rel;
+
   const maxStep = GUN_ROTATE_SPEED_RAD_PER_SEC * dt;
-  const diff = target - prev;
-  if (diff > maxStep) return prev + maxStep;
-  if (diff < -maxStep) return prev - maxStep;
-  return target;
+  let diff = target - prev;
+  while (diff >  Math.PI) diff -= 2 * Math.PI;
+  while (diff < -Math.PI) diff += 2 * Math.PI;
+  const step = Math.max(-maxStep, Math.min(maxStep, diff));
+  return prev + step;
 }
 
 function findInputForStation(
@@ -51,6 +54,7 @@ export function tickGuns(
 ): void {
   const shipX = state.ship.position.x;
   const shipY = state.ship.position.y;
+  const visuals = getLayout(state.ship.layout).visuals;
   const up = state.upgrades;
   const fireCooldown = GUN_FIRE_COOLDOWN_SEC / up.gunFireRateMul;
   const bulletSpeed = PLAYER_BULLET_SPEED * up.gunBulletSpeedMul;
@@ -71,17 +75,17 @@ export function tickGuns(
     const angle = clampAimAngle(aimX, aimY, side, prevAngle, dt);
     station.aimAngle = angle;
 
-    const baseOffsetY = side === "top" ? GUN_BASE_OFFSET_Y : -GUN_BASE_OFFSET_Y;
-    const baseX = shipX + station.hardpoint.x;
-    const baseY = shipY + station.hardpoint.y + baseOffsetY;
+    const out = gunOutward(side);
+    const baseX = shipX + station.hardpoint.x + out.x * visuals.gunBaseOffset;
+    const baseY = shipY + station.hardpoint.y + out.y * visuals.gunBaseOffset;
 
     const cooldown = station.fireCooldownSec - dt;
     if (cooldown <= 0) {
       for (let i = 0; i < shotCount; i++) {
         const t = shotCount === 1 ? 0 : i / (shotCount - 1) - 0.5;
         const shotAngle = angle + t * spread;
-        const muzzleX = baseX + Math.cos(shotAngle) * GUN_BARREL_LEN;
-        const muzzleY = baseY + Math.sin(shotAngle) * GUN_BARREL_LEN;
+        const muzzleX = baseX + Math.cos(shotAngle) * visuals.gunBarrelLen;
+        const muzzleY = baseY + Math.sin(shotAngle) * visuals.gunBarrelLen;
         const bullet = new Projectile();
         bullet.id = nextId(state, "bullet");
         bullet.faction = "player";

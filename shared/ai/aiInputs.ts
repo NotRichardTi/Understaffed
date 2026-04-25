@@ -3,24 +3,23 @@ import { emptyInputFrame, type InputFrame } from "../state/inputFrame.js";
 import type { Enemy } from "../state/entities.js";
 import {
   SHIELD_START,
-  SHIP_HALF_H,
-  SHIP_HALF_W,
 } from "../content/tuning.js";
+import { getLayout, gunOutward } from "../content/layouts/index.js";
 
 function nearestEnemyInHemisphere(
   enemies: Enemy[],
   gunX: number,
   gunY: number,
-  side: "top" | "bottom",
+  side: GunSide,
 ): Enemy | null {
+  const out = gunOutward(side);
   let best: Enemy | null = null;
   let bestDist = Infinity;
   for (const e of enemies) {
     if (e.hp <= 0) continue;
-    const dy = e.position.y - gunY;
-    if (side === "top" && dy < -4) continue;
-    if (side === "bottom" && dy > 4) continue;
     const dx = e.position.x - gunX;
+    const dy = e.position.y - gunY;
+    if (dx * out.x + dy * out.y < -4) continue;
     const d = dx * dx + dy * dy;
     if (d < bestDist) {
       bestDist = d;
@@ -46,8 +45,9 @@ function fillGunFrame(
     f.aimX = dx / len;
     f.aimY = dy / len;
   } else {
-    f.aimX = 1;
-    f.aimY = side === "top" ? 0.01 : -0.01;
+    const out = gunOutward(side);
+    f.aimX = out.x !== 0 ? out.x : 1;
+    f.aimY = out.y !== 0 ? out.y : (side === "top" ? 0.01 : -0.01);
   }
 }
 
@@ -59,7 +59,7 @@ function fillRepairFrame(f: InputFrame, state: GameState): void {
 
 const DODGE_LOOKAHEAD_SEC = 2.2;
 const PROJECTILE_SCAN_RADIUS = 360;
-const SHIP_DODGE_RADIUS = Math.max(SHIP_HALF_W, SHIP_HALF_H) + 18;
+const SHIP_DODGE_PADDING = 18;
 const SWARMER_AVOID_RADIUS = 210;
 const ORB_SEEK_RADIUS = 480;
 const ORB_FORCE_CAP = 0.5;
@@ -74,6 +74,8 @@ const HEAVY_PROJECTILE_DAMAGE = 20;
 function fillDriverFrame(f: InputFrame, state: GameState): void {
   const shipX = state.ship.position.x;
   const shipY = state.ship.position.y;
+  const hull = getLayout(state.ship.layout).hull;
+  const shipDodgeRadius = Math.max(hull.halfW, hull.halfH) + SHIP_DODGE_PADDING;
 
   const inShieldCooldown = state.ship.shieldCooldownUntilTick !== NO_TICK;
   const shieldReady = inShieldCooldown
@@ -109,7 +111,7 @@ function fillDriverFrame(f: InputFrame, state: GameState): void {
     const caDy = shipY - futureY;
     const caDist = Math.hypot(caDx, caDy);
 
-    const hitRadius = SHIP_DODGE_RADIUS + (p.aoeRadius ?? 0);
+    const hitRadius = shipDodgeRadius + (p.aoeRadius ?? 0);
     if (caDist > hitRadius + 40) continue;
 
     const urgency = Math.max(0.2, 1 - caDist / (hitRadius + 40));

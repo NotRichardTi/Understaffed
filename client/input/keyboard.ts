@@ -1,5 +1,6 @@
 import { emptyInputFrame, type InputFrame } from "@shared/state/inputFrame.js";
 import type { GunSide, StationKind } from "@shared/state/gameState.js";
+import { gunDefaultAngle } from "@shared/content/layouts/index.js";
 import {
   GUN_ROTATE_SPEED_RAD_PER_SEC,
   TICK_DT_SEC,
@@ -27,6 +28,7 @@ const SELF_SWITCH_STATIONS: Record<string, string> = {
   "3": "station-gun-1",
   "4": "station-gun-2",
   "5": "station-gun-3",
+  "6": "station-gun-4",
 };
 
 let botIdByIndex: string[] = [];
@@ -46,8 +48,6 @@ function handleDigit(k: string): void {
     if (target) {
       pendingStationSwitch = target;
       mode = "idle";
-    } else if (k === "4" || k === "5") {
-      // no-op in self-switch; 1-5 covered above
     }
     return;
   }
@@ -95,7 +95,7 @@ export function attachKeyboard(target: Window | HTMLElement = window): () => voi
       pendingVote = parseInt(k, 10) - 1;
       return;
     }
-    if (/^[1-5]$/.test(k)) handleDigit(k);
+    if (/^[1-6]$/.test(k)) handleDigit(k);
   };
   const onUp = (e: KeyboardEvent) => {
     keysDown.delete(e.key.toLowerCase());
@@ -122,18 +122,21 @@ export function getSelectedBot(): string | null {
 }
 
 function updateGunAngle(stationId: string, side: GunSide): number {
-  const minAngle = side === "top" ? 0 : -Math.PI;
-  const maxAngle = side === "top" ? Math.PI : 0;
-  let angle =
-    gunAngleByStation[stationId] ?? (side === "top" ? Math.PI / 2 : -Math.PI / 2);
+  const out = gunDefaultAngle(side);
+  let angle = gunAngleByStation[stationId] ?? out;
 
   const left = isKeyDown("a");
   const right = isKeyDown("d");
   const delta = GUN_ROTATE_SPEED_RAD_PER_SEC * TICK_DT_SEC;
   if (left) angle += delta;
   if (right) angle -= delta;
-  if (angle < minAngle) angle = minAngle;
-  if (angle > maxAngle) angle = maxAngle;
+
+  let rel = angle - out;
+  while (rel >  Math.PI) rel -= 2 * Math.PI;
+  while (rel < -Math.PI) rel += 2 * Math.PI;
+  if (rel >  Math.PI / 2) rel =  Math.PI / 2;
+  if (rel < -Math.PI / 2) rel = -Math.PI / 2;
+  angle = out + rel;
 
   gunAngleByStation[stationId] = angle;
   return angle;

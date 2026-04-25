@@ -8,11 +8,17 @@ export const STATION_IDS = [
   "station-gun-1",
   "station-gun-2",
   "station-gun-3",
+  "station-gun-4",
   "station-driver",
   "station-repair",
 ] as const;
 
-export const GUN_STATION_IDS = ["station-gun-1", "station-gun-2", "station-gun-3"] as const;
+export const GUN_STATION_IDS = [
+  "station-gun-1",
+  "station-gun-2",
+  "station-gun-3",
+  "station-gun-4",
+] as const;
 export const GUNNER_PICK_ID = "station-gunner";
 
 function firstFreeCharIdx(state: RoomState): number {

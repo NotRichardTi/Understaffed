@@ -8,7 +8,7 @@ This document is the single source of truth for the game. Read it before every c
 
 ## 1. Vision
 
-You command a small spaceship with your crew. The ship has five stations — one driver, one repair, three gun turrets — but you only have four crewmates. Someone is always missing from a station. Leaving your gun to patch the shield means the gun goes dark. Running a solo mission means coordinating AI crew. The fun is in the constant re-negotiation of *"who covers what."*
+You command a small spaceship with your crew. The ship has more stations than you have crewmates — always one driver, one repair, and a layout-defined set of gun turrets (e.g., three in the baseline ships, four in the cross-quad ship) — but you only have four crewmates. Someone is always missing from a station. Leaving your gun to patch the shield means the gun goes dark. Running a solo mission means coordinating AI crew. The fun is in the constant re-negotiation of *"who covers what."*
 
 **Reference feel:** Vampire Survivors (auto-fire, enemy density, run length, XP upgrade pacing) crossed with Lovers in a Dangerous Spacetime (multi-station crew management) in a classic horizontal shmup frame.
 
@@ -25,10 +25,10 @@ These are settled. Do not relitigate without explicit sign-off.
 | Engine | Babylon.js |
 | Rendering | True 2D sprites, orthographic camera |
 | Players (multiplayer) | Max 4 |
-| Stations | Always exactly 5 (one more than max players) |
-| Station breakdown | 1 driver, 1 repair, 3 guns |
-| Gun layout | Randomized per run: either 2-top/1-bottom or 1-top/2-bottom |
-| Enemy spawn balance | Heavier spawns on the side with more guns |
+| Stations | Varies by layout; always more than max players. Baselines have 5; the cross-quad layout has 6. |
+| Station breakdown | 1 driver, 1 repair, plus a layout-defined set of guns (3 in baselines, 4 in cross-quad) |
+| Gun layout | Random per run from a layout pool. Built-in: 2-top/1-bottom, 1-top/2-bottom, and a 4-gun cross (top/bottom/left/right). |
+| Enemy spawn balance | Heavier spawns on the gun-heavy side. Symmetric layouts (e.g. cross-quad) receive balanced spawns. |
 | Gun control | WASD aims, auto-fires; 180° swivel arc |
 | Driver control | Move ship freely through the world (up/down/left/right); camera follows the ship |
 | Repair | Hold to heal the shield; shield has a cooldown if fully depleted |
@@ -74,7 +74,7 @@ The ship is a single static sprite (with animated turrets/thrusters) positioned 
 
 - A **glass window** sprite that displays the crew member inside (or goes dark during transit / if unmanned).
 - A **station type**: `driver | repair | gun`.
-- A **gun-specific direction** (top or bottom) if `gun`.
+- A **gun-specific direction** (top, bottom, left, or right) if `gun`.
 - A **hardpoint** for visual mount (the turret or the cockpit glass).
 
 On run start, randomize whether the layout is 2-top/1-bottom or 1-bottom/2-top. Store the layout in the run's game state so enemy spawning can read it.
@@ -88,7 +88,7 @@ On run start, randomize whether the layout is 2-top/1-bottom or 1-bottom/2-top. 
 
 ### 4.3 Guns
 
-- Each gun has a 180° swivel arc oriented outward from the ship (top guns fire upward-hemisphere, bottom guns fire downward-hemisphere).
+- Each gun has a 180° swivel arc oriented outward from the ship along its side's normal (top guns fire upward-hemisphere, bottom guns fire downward-hemisphere, left/right guns fire their respective lateral hemispheres).
 - WASD rotates the gun barrel. The barrel's current angle determines projectile direction.
 - Gun auto-fires at a fixed cadence (suggested start: 3 shots/sec; upgradeable).
 - When the station is **unmanned or in transit**, the gun does not fire at all. (The glass window shows the reason.)
@@ -110,7 +110,7 @@ On run start, randomize whether the layout is 2-top/1-bottom or 1-bottom/2-top. 
 
 ### 4.6 Enemies
 
-Enemies spawn on a ring just outside the camera's view, around the ship. Spawn distribution is weighted toward the gun-heavy hemisphere (so a 2-top/1-bottom layout sees more top-side spawns).
+Enemies spawn on a ring just outside the camera's view, around the ship. Spawn distribution is weighted toward the gun-heavy hemisphere (so a 2-top/1-bottom layout sees more top-side spawns). Symmetric layouts (e.g. the cross-quad) use balanced spawn distribution with no idle bias.
 
 **Camera recycling.** As the ship traverses the world, regular enemies that drift far outside the camera are recycled — despawned and re-emitted as fresh spawns on the outer ring. Regular enemies do **not** retain HP across recycles, which keeps synced state small. **Mini-bosses and bosses are exempt**: they retain HP and are never camera-recycled; they persist in-world until killed.
 
@@ -163,7 +163,7 @@ Upgrades apply globally to their station type. E.g., "+fire rate" buffs all thre
 - Shield bar + cooldown indicator (just below hull)
 - XP bar (bottom of screen, Vampire Survivors style)
 - Timer (top-right, counts up to 20:00, shows next boss countdown)
-- Mini-map or station diagram (left side): shows all 5 stations, which are manned/empty/in-transit, and crew identities
+- Mini-map or station diagram (left side): shows all stations on the active layout, which are manned/empty/in-transit, and crew identities
 - Per-station HUD details (fire rate, etc.) shown on hover/focus
 
 ---
@@ -267,13 +267,13 @@ When you get to Phase 5:
 **Milestone:** You can fly, shoot one enemy type, take damage, and see the hull drop.
 
 ### Phase 3 — All Stations Online (Days 5–7)
-- All 5 stations exist on the ship. Layout randomization.
+- All stations on the active layout exist on the ship. Layout randomization (pool of built-in layouts).
 - Repair station: hold-to-heal shield. Shield bar in HUD. Shield cooldown.
 - Driver station: ship moves freely through the world, WASD controls; camera hard-follows the ship.
 - Station switching: press `Q` to open station map, pick destination, 3-sec transit, glass goes dark during transit.
 - Only one station can be occupied at a time (player is alone; AI comes next phase).
 
-**Milestone:** You can switch between all 5 stations, experience the "stations > hands" tension solo.
+**Milestone:** You can switch between all stations on the active layout, experience the "stations > hands" tension solo.
 
 ### Phase 4 — AI Crew, Enemies, Bosses (Days 8–10)
 - AI crew spawn on run start. Each runs its station's automatic behavior.
@@ -316,7 +316,7 @@ These have been explicitly cut or deferred. Resist adding them.
 - **Interior ship view.** No walking around inside the ship. No platforming.
 - **Alien boarders / hull breaches from enemies.** Not in the jam build.
 - **Per-player upgrades** or **per-player XP pools.** One shared bar, shared vote.
-- **Procedural ship layouts.** One ship design, randomized gun positions only.
+- **Procedural ship layouts.** A small built-in pool of hand-authored ship layouts; no run-time generation.
 - **Persistent meta-progression.** Every run is fresh.
 - **Mobile/touch support.** Desktop keyboard only for the jam.
 - **Accounts, saves, leaderboards.** Jam scope.

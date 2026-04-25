@@ -4,8 +4,6 @@ import {
   FIGHTER_SPEED,
   FIGHTER_STOP_DIST,
   FIGHTER_FIRE_COOLDOWN_SEC,
-  SHIP_HALF_H,
-  SHIP_HALF_W,
   SWARMER_CONTACT_DAMAGE,
   SWARMER_HP,
   SWARMER_SIZE,
@@ -43,6 +41,7 @@ import {
   ENEMY_LEASH_BOOST_MAX_MAG,
   ENEMY_LEASH_EXIT_MARGIN,
 } from "../content/tuning.js";
+import { getLayout } from "../content/layouts/index.js";
 import { nextId } from "./ids.js";
 
 function approach(enemy: Enemy, shipX: number, shipY: number, speed: number, stopDist: number): void {
@@ -94,11 +93,11 @@ function tickFighter(state: GameState, e: Enemy, dt: number, shipX: number, ship
   }
 }
 
-function tickSwarmer(e: Enemy, shipX: number, shipY: number): void {
+function tickSwarmer(e: Enemy, shipX: number, shipY: number, hullHalfW: number, hullHalfH: number): void {
   const ehalf = e.size / 2;
   const touching =
-    Math.abs(shipX - e.position.x) < SHIP_HALF_W + ehalf &&
-    Math.abs(shipY - e.position.y) < SHIP_HALF_H + ehalf;
+    Math.abs(shipX - e.position.x) < hullHalfW + ehalf &&
+    Math.abs(shipY - e.position.y) < hullHalfH + ehalf;
   if (touching) {
     e.velocity.x = 0;
     e.velocity.y = 0;
@@ -237,6 +236,7 @@ function tickBoss(state: GameState, e: Enemy, dt: number, shipX: number, shipY: 
 export function tickEnemies(state: GameState, dt: number): void {
   const shipX = state.ship.position.x;
   const shipY = state.ship.position.y;
+  const hull = getLayout(state.ship.layout).hull;
 
   for (const e of state.enemies) {
     if (e.contactCooldownSec !== undefined && e.contactCooldownSec > 0) {
@@ -244,7 +244,7 @@ export function tickEnemies(state: GameState, dt: number): void {
     }
     switch (e.kind) {
       case "fighter": tickFighter(state, e, dt, shipX, shipY); break;
-      case "swarmer": tickSwarmer(e, shipX, shipY); break;
+      case "swarmer": tickSwarmer(e, shipX, shipY, hull.halfW, hull.halfH); break;
       case "tank": tickTank(state, e, dt, shipX, shipY); break;
       case "sniper": tickSniper(state, e, dt, shipX, shipY); break;
       case "miniboss": tickMiniboss(state, e, dt, shipX, shipY); break;

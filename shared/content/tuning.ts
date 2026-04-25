@@ -15,7 +15,6 @@ export const CAMERA_HALF_H = 360;
 export const ENEMY_LEASH_NEAR_MAG = 0.85;
 export const ENEMY_LEASH_BOOST_MAX_MAG = 1.65;
 export const ENEMY_LEASH_EXIT_MARGIN = 20;
-export const SPAWN_GUN_BIAS_IDLE = 0.5;
 export const SPAWN_ARC_NARROWING = 0.5;
 
 export const HULL_START = 100;

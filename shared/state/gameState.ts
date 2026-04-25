@@ -124,22 +124,23 @@ export function createInitialState(layoutId?: string): GameState {
   const def = getLayout(chosenId);
   const stations = buildStations(def);
 
-  const driverStation = stations.find((s) => s.kind === "driver")!;
+  // Default seating used when this state is shown before the lobby has assigned crew.
+  // Driver is human-only — left unmanned by default; the lobby's human picks fill it.
   const repairStation = stations.find((s) => s.kind === "repair")!;
   const gunStations = stations.filter((s) => s.kind === "gun");
   const humanGun = gunStations[0]!;
-  const aiGun = gunStations[1]!;
+  const aiGuns = gunStations.slice(1, 3);
 
   humanGun.occupantCrewId = "crew-0";
-  driverStation.occupantCrewId = "crew-1";
-  repairStation.occupantCrewId = "crew-2";
-  aiGun.occupantCrewId = "crew-3";
+  repairStation.occupantCrewId = "crew-1";
+  if (aiGuns[0]) aiGuns[0].occupantCrewId = "crew-2";
+  if (aiGuns[1]) aiGuns[1].occupantCrewId = "crew-3";
 
   const crew: Crew[] = [
     makeCrew("crew-0", true, humanGun.id),
-    makeCrew("crew-1", false, driverStation.id),
-    makeCrew("crew-2", false, repairStation.id),
-    makeCrew("crew-3", false, aiGun.id),
+    makeCrew("crew-1", false, repairStation.id),
+    makeCrew("crew-2", false, aiGuns[0]?.id ?? NO_ID),
+    makeCrew("crew-3", false, aiGuns[1]?.id ?? NO_ID),
   ];
 
   const s = new GameState();

@@ -3,7 +3,7 @@ import { baselineV1_1top2bot } from "./baselineV1_1top2bot.js";
 import { crossQuad_v1 } from "./crossQuad_v1.js";
 import type { ShipLayoutDef } from "./types.js";
 
-export type { ShipLayoutDef, GunSide, SpawnBias, LayoutGun, LayoutHull, LayoutStations, LayoutVisuals } from "./types.js";
+export type { ShipLayoutDef, GunSide, LayoutGun, LayoutHull, LayoutStations, LayoutVisuals } from "./types.js";
 export { gunOutward, gunDefaultAngle } from "./types.js";
 
 const ALL_LAYOUTS: ReadonlyArray<ShipLayoutDef> = [

@@ -2,7 +2,6 @@ import type { ShipLayoutDef } from "./types.js";
 
 export const baselineV1_2top1bot: ShipLayoutDef = {
   id: "baseline-v1-2top-1bot",
-  spawnBias: "top",
   hull: {
     halfW: 128,
     halfH: 64,

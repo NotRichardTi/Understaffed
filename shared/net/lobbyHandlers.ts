@@ -181,7 +181,10 @@ export function handleStartGame(state: RoomState, sessionId: string): boolean {
   });
 
   if (state.aiFill) {
-    const availableStations = state.game.stations.filter((s) => !usedStations.has(s.id));
+    // Driver is human-only; AI never fills it.
+    const availableStations = state.game.stations.filter(
+      (s) => !usedStations.has(s.id) && s.kind !== "driver",
+    );
     for (let idx = 0; idx < CHAR_COUNT && state.game.crew.length < MAX_PLAYERS; idx++) {
       if (usedCharIdx.has(idx)) continue;
       const station = availableStations.shift();

@@ -68,7 +68,8 @@ export function tickTransit(state: GameState, inputs: InputFrame[]): void {
       );
       if (bot) {
         const target = resolveDestination(state, input.aiCommand.destination);
-        if (target) beginTransit(state, bot, target);
+        // Driver is human-only; AI is never sent there.
+        if (target && target.kind !== "driver") beginTransit(state, bot, target);
       }
     }
   }

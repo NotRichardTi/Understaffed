@@ -2,7 +2,6 @@ import type { ShipLayoutDef } from "./types.js";
 
 export const crossQuad_v1: ShipLayoutDef = {
   id: "cross-quad-v1",
-  spawnBias: "balanced",
   hull: {
     halfW: 110,
     halfH: 80,

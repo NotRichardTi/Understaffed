@@ -3,7 +3,6 @@ import { Enemy, type EnemyKind } from "../state/entities.js";
 import {
   SPAWN_RING_HALF_W,
   SPAWN_RING_HALF_H,
-  SPAWN_GUN_BIAS_IDLE,
   SPAWN_ARC_NARROWING,
   FIGHTER_HP,
   FIGHTER_SIZE,
@@ -30,7 +29,6 @@ import {
   BOSS_FIRE_COOLDOWN_SEC,
   BOSS_SPAWN_SEC,
 } from "../content/tuning.js";
-import { getLayout, gunOutward } from "../content/layouts/index.js";
 import { nextId } from "./ids.js";
 
 interface SpawnWeight {
@@ -57,17 +55,11 @@ function pickKind(weights: SpawnWeight[]): EnemyKind {
 }
 
 export function pickSpawnPosition(state: GameState): { x: number; y: number } {
-  const def = getLayout(state.ship.layout);
-  const idleBias = def.spawnBias === "balanced" ? { x: 0, y: 0 } : gunOutward(def.spawnBias);
   const mx = state.ship.driverMoveX;
   const my = state.ship.driverMoveY;
-  const travelMag = Math.min(1, Math.hypot(mx, my));
-  const idleScale = SPAWN_GUN_BIAS_IDLE * (1 - travelMag);
-  const biasX = mx + idleBias.x * idleScale;
-  const biasY = my + idleBias.y * idleScale;
-  const biasMag = Math.hypot(biasX, biasY);
+  const biasMag = Math.hypot(mx, my);
   const centerAngle =
-    biasMag < 0.01 ? Math.random() * Math.PI * 2 : Math.atan2(biasY, biasX);
+    biasMag < 0.01 ? Math.random() * Math.PI * 2 : Math.atan2(my, mx);
   const strength = Math.min(1, biasMag);
   const arcHalf = Math.PI * (1 - strength * SPAWN_ARC_NARROWING);
   const theta = centerAngle + (Math.random() * 2 - 1) * arcHalf;

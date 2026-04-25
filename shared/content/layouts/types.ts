@@ -1,7 +1,5 @@
 export type GunSide = "top" | "bottom" | "left" | "right";
 
-export type SpawnBias = GunSide | "balanced";
-
 export interface LayoutGun {
   readonly id: string;
   readonly side: GunSide;
@@ -56,8 +54,6 @@ export interface LayoutVisuals {
 
 export interface ShipLayoutDef {
   readonly id: string;
-  /** Which side enemy spawns are biased toward when the ship is idle. "balanced" disables idle bias. */
-  readonly spawnBias: SpawnBias;
   readonly hull: LayoutHull;
   readonly stations: LayoutStations;
   readonly visuals: LayoutVisuals;

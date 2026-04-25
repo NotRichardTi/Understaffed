@@ -28,14 +28,14 @@ These are settled. Do not relitigate without explicit sign-off.
 | Stations | Varies by layout; always more than max players. Baselines have 5; the cross-quad layout has 6. |
 | Station breakdown | 1 driver, 1 repair, plus a layout-defined set of guns (3 in baselines, 4 in cross-quad) |
 | Gun layout | Random per run from a layout pool. Built-in: 2-top/1-bottom, 1-top/2-bottom, and a 4-gun cross (top/bottom/left/right). |
-| Enemy spawn balance | Heavier spawns on the gun-heavy side. Symmetric layouts (e.g. cross-quad) receive balanced spawns. |
+| Enemy spawn balance | Spawn distribution leans toward the ship's direction of travel; otherwise spawns are evenly distributed around the ring. |
 | Gun control | WASD aims, auto-fires; 180° swivel arc |
 | Driver control | Move ship freely through the world (up/down/left/right); camera follows the ship |
 | Repair | Hold to heal the shield; shield has a cooldown if fully depleted |
 | Shield/hull | Shield absorbs damage; when down, hull takes direct hits |
 | Station switching | 3-second transit; the leaving gun stops firing during transit; player visible in destination glass window after transit completes |
 | Station claiming | First-come; players can send a switch-request UI ping to another player |
-| Driver leaving | Must choose a destination; no unmanned ship |
+| Driver leaving | Driver is human-only; AI never operates it. If no human is at the driver station, the ship sits still until someone takes the wheel. |
 | Run length | 20 minutes, boss every 5 minutes (3 mid-bosses + final boss) |
 | Difficulty curve | Vampire Survivors–style increasing density over time |
 | Fail state | Hull reaches 0 |
@@ -56,7 +56,7 @@ These are settled. Do not relitigate without explicit sign-off.
 
 1. Player joins/hosts a lobby, enters the game.
 2. Ship appears centered on screen. The camera follows the ship (Vampire Survivors–style), so the ship stays roughly anchored to the middle of the view while the world scrolls around it as the driver moves. The parallax starfield shifts based on camera velocity to sell the sense of motion.
-3. Enemies spawn on a ring just outside the camera's view and approach the ship. Spawns are weighted toward the ship's gun-heavy hemisphere (see §4.6). Some shoot, some melee, some snipe from range.
+3. Enemies spawn on a ring just outside the camera's view and approach the ship. Spawns lean toward the ship's direction of travel (see §4.6) but ignore where the guns are. Some shoot, some melee, some snipe from range.
 4. Crew at gun stations aim with WASD; guns auto-fire projectiles in whatever direction the stick is pointed, within a 180° arc.
 5. Driver dodges incoming projectiles by moving the ship freely through the world; the camera follows.
 6. Repair crewmember holds a button to regenerate the shield.
@@ -77,7 +77,7 @@ The ship is a single static sprite (with animated turrets/thrusters) positioned 
 - A **gun-specific direction** (top, bottom, left, or right) if `gun`.
 - A **hardpoint** for visual mount (the turret or the cockpit glass).
 
-On run start, randomize whether the layout is 2-top/1-bottom or 1-bottom/2-top. Store the layout in the run's game state so enemy spawning can read it.
+On run start, the active layout is picked from the layout pool (see `shared/content/layouts/`). The layout id is stored in the run's game state and drives station hardpoints, hull dimensions, and ship visuals.
 
 ### 4.2 Shield & Hull
 
@@ -95,9 +95,10 @@ On run start, randomize whether the layout is 2-top/1-bottom or 1-bottom/2-top. 
 
 ### 4.4 Driver
 
+- **Human-only station.** AI never operates the driver. If the driver is unmanned, the ship is stationary; spawns still happen but lose the directional bias from §4.6.
 - Moves the ship freely through the world. The camera follows the ship (Vampire Survivors–style), keeping it roughly centered on screen.
 - Base movement speed: tune during playtest.
-- Cannot leave the station without choosing a destination.
+- Like any other station, leaving driver requires picking a destination — but unlike the rest, there is no fallback occupant if the only human at driver leaves. Picking a station that the player cannot return from (e.g., committing to a gun in single-player) is a real choice; the ship freezes until the player switches back.
 - Movement is snappy/arcade (no momentum), unless playtest shows momentum feels better.
 
 ### 4.5 Station Switching
@@ -110,7 +111,7 @@ On run start, randomize whether the layout is 2-top/1-bottom or 1-bottom/2-top. 
 
 ### 4.6 Enemies
 
-Enemies spawn on a ring just outside the camera's view, around the ship. Spawn distribution is weighted toward the gun-heavy hemisphere (so a 2-top/1-bottom layout sees more top-side spawns). Symmetric layouts (e.g. the cross-quad) use balanced spawn distribution with no idle bias.
+Enemies spawn on a ring just outside the camera's view, around the ship. Spawn distribution leans toward the ship's current direction of travel (so flying up brings more enemies in from above). When the ship is stationary, spawns are evenly distributed around the ring. Layouts do not affect spawn bias.
 
 **Camera recycling.** As the ship traverses the world, regular enemies that drift far outside the camera are recycled — despawned and re-emitted as fresh spawns on the outer ring. Regular enemies do **not** retain HP across recycles, which keeps synced state small. **Mini-bosses and bosses are exempt**: they retain HP and are never camera-recycled; they persist in-world until killed.
 
@@ -145,15 +146,15 @@ Upgrades apply globally to their station type. E.g., "+fire rate" buffs all thre
 
 ### 4.8 AI Crew (Single-Player)
 
-- On single-player start, the game spawns 3 AI crewmates. The player occupies one station; AI occupies the other three (leaving one station empty at any given time, because stations = players + 1).
+- The player picks a station in the lobby. If "AI Fill" is on, the remaining stations (except driver) get AI crewmates. The driver station is **human-only** — if no human picks it, the ship sits still until a human switches in.
 - **AI automatic behavior:**
   - Gun AI: aims at the nearest threatening enemy within its arc, otherwise sweeps the arc.
-  - Driver AI: avoids projectiles within a lookahead window, stays centered when safe.
   - Repair AI: holds repair if shield < 100% and not in cooldown; idles otherwise.
+  - There is no driver AI.
   - AI does not voluntarily switch stations unless commanded.
 - **Commanding AI:**
-  - Press `1`, `2`, `3`, or `4` to target a specific AI crewmate (the game displays which AI is which in the HUD).
-  - A small command menu opens: `1. Go to Driver`, `2. Go to Repair`, `3. Go to Gun [nearest unmanned]`, `4. Cancel`.
+  - Press a digit to target a specific AI crewmate (the game displays which AI is which in the HUD).
+  - A small command menu opens listing each unoccupied non-driver station as a destination, plus a Cancel option. Driver is never offered as a destination.
   - Commanded AI triggers a station switch exactly like a player would.
   - Menu is live (does not pause).
 

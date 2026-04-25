@@ -4,7 +4,7 @@ import type { Enemy } from "../state/entities.js";
 import {
   SHIELD_START,
 } from "../content/tuning.js";
-import { getLayout, gunOutward } from "../content/layouts/index.js";
+import { gunOutward } from "../content/layouts/index.js";
 
 function nearestEnemyInHemisphere(
   enemies: Enemy[],
@@ -57,165 +57,6 @@ function fillRepairFrame(f: InputFrame, state: GameState): void {
   f.repairHeld = true;
 }
 
-const DODGE_LOOKAHEAD_SEC = 2.2;
-const PROJECTILE_SCAN_RADIUS = 360;
-const SHIP_DODGE_PADDING = 18;
-const SWARMER_AVOID_RADIUS = 210;
-const ORB_SEEK_RADIUS = 480;
-const ORB_FORCE_CAP = 0.5;
-const IMMINENT_DANGER_THRESHOLD = 1.4;
-const COVERAGE_SCAN_RADIUS = 700;
-const COVERAGE_MARGIN = 90;
-const COVERAGE_FORCE_CAP = 0.55;
-const LIGHT_DODGE_SUPPRESSION = 0.7;
-const COVERAGE_AGGRESSION_BOOST = 1.0;
-const HEAVY_PROJECTILE_DAMAGE = 20;
-
-function fillDriverFrame(f: InputFrame, state: GameState): void {
-  const shipX = state.ship.position.x;
-  const shipY = state.ship.position.y;
-  const hull = getLayout(state.ship.layout).hull;
-  const shipDodgeRadius = Math.max(hull.halfW, hull.halfH) + SHIP_DODGE_PADDING;
-
-  const inShieldCooldown = state.ship.shieldCooldownUntilTick !== NO_TICK;
-  const shieldReady = inShieldCooldown
-    ? 0
-    : state.ship.shield / Math.max(1, state.upgrades.shieldMax);
-  const hullFactor = state.ship.hull / Math.max(1, state.upgrades.hullMax);
-  const aggression = Math.max(0, Math.min(1, shieldReady * hullFactor));
-  const lightDodgeScale = 1 - aggression * LIGHT_DODGE_SUPPRESSION;
-
-  let forceX = 0;
-  let forceY = 0;
-  let danger = 0;
-
-  for (const p of state.projectiles) {
-    if (p.faction !== "enemy") continue;
-    const dpx = shipX - p.position.x;
-    const dpy = shipY - p.position.y;
-    const distNow = Math.hypot(dpx, dpy);
-    if (distNow > PROJECTILE_SCAN_RADIUS) continue;
-
-    const vx = p.velocity.x;
-    const vy = p.velocity.y;
-    const speed = Math.hypot(vx, vy);
-    if (speed < 1) continue;
-
-    const rawT = (dpx * vx + dpy * vy) / (speed * speed);
-    if (rawT < -0.1) continue;
-    const t = Math.min(rawT, DODGE_LOOKAHEAD_SEC);
-
-    const futureX = p.position.x + vx * t;
-    const futureY = p.position.y + vy * t;
-    const caDx = shipX - futureX;
-    const caDy = shipY - futureY;
-    const caDist = Math.hypot(caDx, caDy);
-
-    const hitRadius = shipDodgeRadius + (p.aoeRadius ?? 0);
-    if (caDist > hitRadius + 40) continue;
-
-    const urgency = Math.max(0.2, 1 - caDist / (hitRadius + 40));
-    const timeFactor = Math.max(0.25, 1 - t / DODGE_LOOKAHEAD_SEC);
-    let w = urgency * timeFactor * 3.0;
-
-    const isHeavy = (p.aoeRadius ?? 0) > 0 || p.damage >= HEAVY_PROJECTILE_DAMAGE;
-    const isUnavoidable = caDist < 4;
-    if (!isHeavy && !isUnavoidable) {
-      w *= lightDodgeScale;
-    }
-
-    if (caDist < 4) {
-      const perpX = -vy / speed;
-      const perpY = vx / speed;
-      const roomAbove = 240 - shipY;
-      const roomBelow = 240 + shipY;
-      const preferDown = roomBelow > roomAbove ? 1 : -1;
-      const sign = Math.sign(perpY) === preferDown || perpY === 0 ? 1 : -1;
-      forceX += perpX * sign * w * 0.25;
-      forceY += perpY * sign * w;
-    } else {
-      forceX += (caDx / caDist) * w;
-      forceY += (caDy / caDist) * w;
-    }
-
-    if (caDist < hitRadius && t < 1.3) danger += w;
-  }
-
-  for (const e of state.enemies) {
-    if (!e.contactDamage) continue;
-    const dx = shipX - e.position.x;
-    const dy = shipY - e.position.y;
-    const dist = Math.hypot(dx, dy);
-    if (dist > SWARMER_AVOID_RADIUS) continue;
-    const urgency = 1 - dist / SWARMER_AVOID_RADIUS;
-    const len = dist || 1;
-    const w = urgency * 2.2;
-    forceX += (dx / len) * w;
-    forceY += (dy / len) * w;
-    if (dist < 110) danger += w;
-  }
-
-  if (danger < IMMINENT_DANGER_THRESHOLD) {
-    const magnet = state.upgrades.xpMagnetRadius;
-    const magnetKeepOut = magnet * 0.7;
-    let orbFx = 0;
-    let orbFy = 0;
-    for (const o of state.xpOrbs) {
-      const dx = o.position.x - shipX;
-      const dy = o.position.y - shipY;
-      const dist = Math.hypot(dx, dy);
-      if (dist < magnetKeepOut) continue;
-      if (dist > ORB_SEEK_RADIUS) continue;
-      const len = dist || 1;
-      const w = 40 / (dist + 60);
-      orbFx += (dx / len) * w;
-      orbFy += (dy / len) * w;
-    }
-    const orbMag = Math.hypot(orbFx, orbFy);
-    if (orbMag > ORB_FORCE_CAP) {
-      orbFx = (orbFx / orbMag) * ORB_FORCE_CAP;
-      orbFy = (orbFy / orbMag) * ORB_FORCE_CAP;
-    }
-    forceX += orbFx;
-    forceY += orbFy;
-  }
-
-  let topActive = false;
-  let bottomActive = false;
-  for (const s of state.stations) {
-    if (s.kind !== "gun" || s.occupantCrewId === NO_ID) continue;
-    if (s.gunSide === "top") topActive = true;
-    else if (s.gunSide === "bottom") bottomActive = true;
-  }
-
-  if (topActive !== bottomActive) {
-    let sumY = 0;
-    let weight = 0;
-    for (const e of state.enemies) {
-      if (e.hp <= 0) continue;
-      const dx = e.position.x - shipX;
-      const dy = e.position.y - shipY;
-      const d = Math.hypot(dx, dy);
-      if (d > COVERAGE_SCAN_RADIUS) continue;
-      const w = 1 / (d + 120);
-      sumY += e.position.y * w;
-      weight += w;
-    }
-    if (weight > 0) {
-      const avgEnemyY = sumY / weight;
-      const desiredShipY = topActive ? avgEnemyY - COVERAGE_MARGIN : avgEnemyY + COVERAGE_MARGIN;
-      const coverageCap = COVERAGE_FORCE_CAP * (1 + aggression * COVERAGE_AGGRESSION_BOOST);
-      const coverageForce = Math.tanh((desiredShipY - shipY) / 140) * coverageCap;
-      forceY += coverageForce;
-    }
-  }
-
-  const mag = Math.hypot(forceX, forceY);
-  if (mag < 0.08) return;
-  f.moveX = forceX / mag;
-  f.moveY = forceY / mag;
-}
-
 export function generateAiInputs(state: GameState): InputFrame[] {
   const frames: InputFrame[] = [];
   for (const crew of state.crew) {
@@ -226,7 +67,7 @@ export function generateAiInputs(state: GameState): InputFrame[] {
     const f = emptyInputFrame(crew.id, crew.currentStationId);
     if (station.kind === "gun") fillGunFrame(f, station, state);
     else if (station.kind === "repair") fillRepairFrame(f, state);
-    else if (station.kind === "driver") fillDriverFrame(f, state);
+    // Driver is human-only — no AI input is generated when unmanned.
     frames.push(f);
   }
   return frames;

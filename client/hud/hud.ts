@@ -577,6 +577,7 @@ export function createHud(cb: HudCallbacks = {}): Hud {
           selBot && selBot.pendingStationId === NO_ID
             ? state.stations.filter(
                 (s) =>
+                  s.kind !== "driver" &&
                   s.occupantCrewId === NO_ID &&
                   s.id !== selBot.currentStationId &&
                   !reservedByOthers.has(s.id),

@@ -4,13 +4,13 @@ export const TICK_DT_SEC = 1 / TICK_HZ;
 export const SHIP_POS_X = 0;
 export const SHIP_POS_Y = 0;
 
-export const SPAWN_RING_HALF_W = 720;
-export const SPAWN_RING_HALF_H = 440;
-export const DESPAWN_HALF_W = 940;
-export const DESPAWN_HALF_H = 600;
+export const SPAWN_RING_HALF_W = 1080;
+export const SPAWN_RING_HALF_H = 660;
+export const DESPAWN_HALF_W = 1410;
+export const DESPAWN_HALF_H = 900;
 
-export const CAMERA_HALF_W = 640;
-export const CAMERA_HALF_H = 360;
+export const CAMERA_HALF_W = 960;
+export const CAMERA_HALF_H = 540;
 
 export const ENEMY_LEASH_NEAR_MAG = 0.85;
 export const ENEMY_LEASH_BOOST_MAX_MAG = 1.65;

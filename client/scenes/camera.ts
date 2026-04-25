@@ -4,7 +4,7 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { Engine } from "@babylonjs/core/Engines/engine";
 import type { Scene } from "@babylonjs/core/scene";
 
-export const VIEW_HEIGHT_UNITS = 720;
+export const VIEW_HEIGHT_UNITS = 1080;
 
 export interface OrthoCamera {
   camera: FreeCamera;

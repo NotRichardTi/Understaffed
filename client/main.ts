@@ -187,4 +187,7 @@ function returnToLobbyFromGame(): void {
   enterLobby();
 }
 
-goMainMenu();
+void (async () => {
+  try { await document.fonts.load('48px "VT323"'); } catch { /* fall through to fallback font */ }
+  goMainMenu();
+})();
